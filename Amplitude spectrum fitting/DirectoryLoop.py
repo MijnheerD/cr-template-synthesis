@@ -1,8 +1,20 @@
 import os
 import glob
+import time
 import numpy as np
-from NumpyEncoder import write_file_json
-from SliceFit import amplitude_fit_slice, distances
+from scipy.optimize import curve_fit
+
+
+def amplitude_fit_slice(fdata, ydata, x, r):
+    d = max(0, 1e-9 * (x/400 - 1.5) * np.exp(1 - r/40000))
+    try:
+        popt, pcov = curve_fit(lambda f, a_0, b, c: a_0 * np.exp(b * f + c * f ** 2), fdata/1e6, ydata - d**2,
+                               p0=[25, -1e-3, -1e-4], bounds=(-np.inf, [np.inf, 1e-2, 1e-3]))
+    except RuntimeError:
+        popt, pcov = curve_fit(lambda f, a_0, b, c: a_0 + b * f + c * f**2, fdata/1e6, np.log(ydata - d**2),
+                               p0=[np.log(25), -1e-3, -1e-6])
+        popt[0] = np.exp(popt[0])  # The first variable in the linear fit is ln(A_0)
+    return popt, d**2
 
 
 roots = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-7/'  # primary energy 1e17
@@ -10,6 +22,7 @@ targetX = './fitXparameters.dat'
 targetY = './fitYparameters.dat'
 nameX = {}
 nameY = {}
+distances = [1, 4000, 7500, 11000, 15000, 37500]
 for i, path in enumerate(glob.glob(os.path.join(roots, 'SIM*/'))):
     sim = path.split('/')[-2].split('_')[0]
     nameX[sim] = []
@@ -22,7 +35,8 @@ for i, path in enumerate(glob.glob(os.path.join(roots, 'SIM*/'))):
             elif 'PrimaryParticleEnergy' in line:
                 primaryE = float(line.split()[2])
 
-    print(f"Analyzing {sim}...")
+    print(f"Analyzing {sim}...\n")
+    t1 = time.time()
     for filename in os.listdir(path):
         temp = filename.split('_')[1].split('.')[0]
         antenna, Xslice = map(int, temp.split('x'))
@@ -60,5 +74,8 @@ for i, path in enumerate(glob.glob(os.path.join(roots, 'SIM*/'))):
             fY.write("\t".join(map(str, paramY)))
             fY.write("\n")
 
-write_file_json('./fitXparameters.json', nameX)
-write_file_json('./fitYparameters.json', nameY)
+    t2 = time.time()
+    print(f"Took {t2-t1}s to analyze\n")
+
+# write_file_json('./fitXparameters.json', nameX)
+# write_file_json('./fitYparameters.json', nameY)
