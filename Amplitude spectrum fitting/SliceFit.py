@@ -12,8 +12,9 @@ def amplitude_fun_slice(f, a_0, b, c, d):
 def amplitude_fit_slice(fdata, ydata, x, r):
     d = max(0, 1e-9 * (x/400 - 1.5) * np.exp(1 - r/40000))
     try:
-        popt, pcov = curve_fit(lambda f, a_0, b, c: a_0 * np.exp(b * f + c * f ** 2), fdata/1e6, ydata - d**2,
-                               p0=[25, -1e-3, -1e-4])
+        popt, pcov = curve_fit(lambda f, a_0, b, c: a_0 * np.exp(b * f + c * f ** 2), fdata / 1e6, ydata - d ** 2,
+                               p0=[ydata[0], -2.5e-3, 0], bounds=(-np.inf, [np.inf, 1e-2, 1e-3]),
+                               sigma=np.maximum(ydata*0.1, np.maximum(d**2, 1e-18)), maxfev=10000)
     except RuntimeError:
         popt, pcov = curve_fit(lambda f, a_0, b, c: a_0 + b * f + c * f**2, fdata/1e6, np.log(ydata - d**2),
                                p0=[np.log(25), -1e-3, -1e-6])
@@ -31,21 +32,21 @@ with open(files_path+sim+f'_coreas/raw_{antenna}x{Xslice}.dat', 'r') as file:
     data = np.genfromtxt(file) * c_vacuum * 1e2  # conversion from statV/cm to microV/m
 
 freq = np.fft.rfftfreq(len(data), 2e-10)
-frange = np.logical_and(10 * 1e6 <= freq, freq <= 5 * 1e8)
+frange = np.logical_and(12 * 1e6 <= freq, freq <= 502 * 1e6)
 
 spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:])
 amplitude = np.abs(spectrum)  # Need to multiply by 2 because 1-sided FT
 filtered = amplitude[frange]
-
+'''
 plt.plot(freq[frange]/1e6, filtered[:, 0], label='x-component (CE)')
 plt.plot(freq[frange]/1e6, filtered[:, 1], label='y-component (Geo)')
 #plt.ylim([0, 8.5])
 plt.xlabel('f [MHz]')
-plt.ylabel(r'$10^7 \cdot A / N(X_{slice}) [\mu V / m]$')
+plt.ylabel(r'A [\mu V / m]$')
 plt.title(f'r = {distances[antenna]/100}m, Xslice = {Xslice} g/cm^2')
 plt.legend()
 plt.show()
-
+'''
 coefX, dX = amplitude_fit_slice(freq[frange],  filtered[:, 0], Xslice, distances[antenna])
 coefY, dY = amplitude_fit_slice(freq[frange],  filtered[:, 1], Xslice, distances[antenna])
 
