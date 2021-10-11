@@ -50,12 +50,12 @@ def analyze_file(path_to_file, filename):
         # Fit the amplitude spectrum, report if linear fit is used
         coefX, dX, linear = amplitude_fit_slice(freq[frange], filtered[:, 0], Xslice, DISTANCES[antenna])
         if linear:
-            with open(LOG_FILE, 'w+') as f:
+            with open(LOG_FILE, 'a+') as f:
                 f.write(os.path.join(path_to_file, filename))
                 f.write(" used linear fit for X\n")
         coefY, dY, linear = amplitude_fit_slice(freq[frange], filtered[:, 1], Xslice, DISTANCES[antenna])
         if linear:
-            with open(LOG_FILE, 'w+') as f:
+            with open(LOG_FILE, 'a+') as f:
                 f.write(os.path.basename(os.getcwd()))
                 f.write(filename)
                 f.write("used linear fit for Y\n")
@@ -71,6 +71,13 @@ def analyze_directory_threads(path):
 
 
 def analyze_directory(path):
+    """
+    Analyze the directory containing all the CoREAS from 1 simulation. The directory must not be contained in the
+    current working directory, as long as path is set correctly.
+    :param path: Path from current working directory to directory to analyze.
+    :return: List of lists, each containing a list of the form [X_slice, antenna_number, fit_values] for each
+    polarization.
+    """
     res = []
     print(f'Analyzing {path}...')
     for file in os.listdir(path):
@@ -110,10 +117,21 @@ def analyze_simulation(dir_path):
 
 
 def fit_simulations(path):
+    """
+    Fit all the simulations in the directory 'path' using multiprocessing.
+    :param path: Directory containing all the simulations
+    :return: List of tuples, each containing the name and length of the time trace of a simulation.
+    """
+    from datetime import date
+
     global WORKING_PATH, LOG_FILE
     WORKING_PATH = os.path.join(os.getcwd(), WORKING_PATH)
     LOG_FILE = os.path.join(os.getcwd(), LOG_FILE)
     os.chdir(path)
+
+    with open(LOG_FILE, 'a+') as file:
+        file.write(str(date.today()))
+
     with futures.ProcessPoolExecutor() as executor:
         res = executor.map(analyze_simulation, glob.glob('SIM*/'))
     return list(res)
