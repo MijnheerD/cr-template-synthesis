@@ -21,17 +21,19 @@ def amplitude_fit_slice(fdata, ydata, x, r):
 
 
 class TemplatesAnalyzer(object):
-    def __init__(self, template_directory, working_path, distances, log_file="amp_fits.log"):
+    def __init__(self, template_directory, working_path, distances, log_file="amp_fits.log", **kwargs):
         """
         Object to analyze all the CoREAS simulations in a directory, to extract the parameters relevant to cosmic ray
         template synthesis.
         :param template_directory: Path to the directory containing the simulations (.reas files and directories).
-        :param working_path: Path the place where the fit parameters should be stored, relative to template_directory.
+        :param working_path: Path to the directory where the fit parameters should be stored, relative to template_directory.
         :param distances: List of the antenna radial distances to the shower core, ordered as the CoREAS numbering.
         :param log_file: Path to file to log fit errors, relative to template_directory.
+        :param parameter_path: Path to the directory where to store the quadratic fit parameters, relative to to template_directory.
         """
         self.directory = template_directory
         self.working_path = working_path
+        self.param_path = kwargs.get('parameter_path', working_path)
         self.distances = distances
         self.log_file = log_file
 
@@ -115,10 +117,79 @@ class TemplatesAnalyzer(object):
 
         return sim_number, len(results)
 
+    def fit_parameters(self):
+        x_max = []
+
+        files_x = []  # list of file handles for fitX files
+        files_y = []  # list of file handles for fitY files
+        for file in os.listdir(os.path.join(self.working_path, 'fitX/')):
+            files_x.append(open(os.path.join(self.working_path, 'fitX/', file)))
+            files_y.append(open(os.path.join(self.working_path, 'fitY/', file)))
+
+        reading = True  # Loop over all slices, aka every line in every file
+        x_max_filled = False  # Read Xmax data only once, as it stays the same for every iteration
+        while reading:
+            # Reset parameter lists for X
+            a_0_x = []
+            b_x = []
+            c_x = []
+            # Reset parameter lists for Y
+            a_0_y = []
+            b_y = []
+            c_y = []
+            # Loop over all the files in polarization pairs
+            for (fileX, fileY) in zip(files_x, files_y):
+                lst_x = fileX.readline().split(', ')
+                lst_y = fileY.readline().split(', ')
+                # Check if end of file is reached
+                if len(lst_x) == 1:
+                    reading = False
+                    return
+
+                if not x_max_filled:
+                    # Check if the Xmax of X and Y is the same
+                    assert lst_x[5] == lst_y[5], f"X and Y have different Xmax, {lst_x[5]} and {lst_y[5]}"
+                    x_max.append(float(lst_x[5]))
+
+                a_0_x.append(float(lst_x[2]))
+                b_x.append(float(lst_x[3]))
+                c_x.append(float(lst_x[4]))
+                a_0_y.append(float(lst_y[2]))
+                b_y.append(float(lst_y[3]))
+                c_y.append(float(lst_y[4]))
+
+            # Perform a quadratic fit to every parameter
+            res_x_a, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, x_max, a_0_x)
+            res_x_b, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, x_max, b_x)
+            res_x_c, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, x_max, c_x)
+            res_y_a, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, x_max, a_0_y)
+            res_y_b, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, x_max, b_y)
+            res_y_c, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, x_max, c_y)
+
+            # Save fitted parameters to file
+            with open(os.path.join(self.param_path, 'fitX', 'slice' + lst_x[0] + '.dat'), 'a+') as f:
+                f.write('antenna' + lst_x[1] + '\t')
+                f.writelines(map(lambda x: str(x) + '\t', res_x_a))
+                f.writelines(map(lambda x: str(x) + '\t', res_x_b))
+                f.writelines(map(lambda x: str(x) + '\t', res_x_c))
+                f.write('\n')
+            with open(os.path.join(self.param_path, 'fitY', 'slice' + lst_y[0] + '.dat'), 'a+') as f:
+                f.write('antenna' + lst_y[1] + '\t')
+                f.writelines(map(lambda x: str(x) + '\t', res_y_a))
+                f.writelines(map(lambda x: str(x) + '\t', res_y_b))
+                f.writelines(map(lambda x: str(x) + '\t', res_y_c))
+                f.write('\n')
+
+            x_max_filled = True
+
+        # Close all the files once done
+        for (fileX, fileY) in zip(files_x, files_y):
+            fileX.close()
+            fileY.close()
+
     def fit_simulations(self):
         """
         Fit all the simulations in the directory 'path' using multiprocessing.
-        :param path: Directory containing all the simulations
         :return: List of tuples, each containing the name and length of the time trace of a simulation.
         """
         from datetime import date
@@ -130,4 +201,7 @@ class TemplatesAnalyzer(object):
 
         with futures.ProcessPoolExecutor() as executor:
             res = executor.map(self.analyze_simulation, glob.glob('SIM*/'))
+
+        self.fit_parameters()
+
         return list(res)
