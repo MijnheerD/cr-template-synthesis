@@ -83,7 +83,23 @@ class TemplatesAnalyzer(object):
         self.working_path = working_path
         self.param_path = kwargs.get('parameter_path', working_path)
         self.distances = distances
-        self.log_file = log_file
+        self.log_file = os.path.join(os.getcwd(), log_file)
+
+        self._check_dirs()
+
+    def _check_dirs(self):
+        """
+        Check whether the necessary directories exist, otherwise create them.
+        """
+        if not os.path.exists(self.working_path):
+            os.mkdir(self.working_path)
+            os.mkdir(os.path.join(self.working_path, "fitX/"))
+            os.mkdir(os.path.join(self.working_path, "fitY/"))
+
+        if not os.path.exists(self.param_path):
+            os.mkdir(self.param_path)
+            os.mkdir(os.path.join(self.param_path, "fitX/"))
+            os.mkdir(os.path.join(self.param_path, "fitY/"))
 
     def analyze_file(self, path_to_file: str, filename: str):
         """
