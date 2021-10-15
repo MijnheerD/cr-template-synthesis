@@ -133,5 +133,6 @@ dmypy.json
 
 # Project folders
 /Parallel processing tests
-/Amplitude spectrum fitting/fitFiles7
+/Amplitude spectrum fitting/fitFiles*
+/Amplitude spectrum fitting/paramFit0
 /Figures
