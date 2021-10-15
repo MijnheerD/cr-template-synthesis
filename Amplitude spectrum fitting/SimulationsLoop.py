@@ -7,7 +7,7 @@ from scipy.constants import c as c_vacuum
 
 
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna radial distances to shower core, in cm
-WORKING_PATH = "fitFiles7/"  # directory to store all the files containing the fit parameters
+WORKING_PATH = "fitFiles18/"  # directory to store all the files containing the fit parameters
 LOG_FILE = "amp_fits.log"  # file to log use of linear fit
 
 
@@ -137,6 +137,6 @@ def fit_simulations(path):
     return list(res)
 
 
-directory = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-7/'
+directory = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-18/'
 lengths = fit_simulations(directory)
 print(lengths)

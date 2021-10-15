@@ -2,8 +2,8 @@ import os
 from scipy.optimize import curve_fit
 
 
-FIT_DIRECTORY = 'fitFiles7/'  # location of the files containing the fit parameters
-PARAM_DIRECTORY = 'paramFit7/'  # location to store the parameters of the quadratic fit
+FIT_DIRECTORY = 'fitFiles17/'  # location of the files containing the fit parameters
+PARAM_DIRECTORY = 'paramFit17/'  # location to store the parameters of the quadratic fit
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna radial distances to shower core, in cm
 XSLICE = 550
 ANTENNA = 3

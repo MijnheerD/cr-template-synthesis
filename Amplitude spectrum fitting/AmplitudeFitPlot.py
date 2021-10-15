@@ -4,9 +4,9 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 
-FIT_DIRECTORY = 'fitFiles7/'  # location of the files containing the fit parameters
+FIT_DIRECTORY = 'fitFiles17/'  # location of the files containing the fit parameters
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna radial distances to shower core, in cm
-XSLICE = 550
+XSLICE = 855
 ANTENNA = 3
 
 A_0_x = []
@@ -41,7 +41,7 @@ resY, covY = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x**2, X_max_y, A
 x_plot = np.array(X_max_y)
 x_plot.sort()
 
-plt.style.use('dark_background')
+# plt.style.use('dark_background')
 fig1, [ax1, ax2] = plt.subplots(1, 2, figsize=(12, 6))
 
 ax1.scatter(X_max_x[:100], A_0_x[:100], color='cyan')
