@@ -137,9 +137,8 @@ class TemplatesAnalyzer(object):
             coefY, dY, linear = amplitude_fit_slice(freq[frange], filtered[:, 1], Xslice, self.distances[antenna])
             if linear:
                 with open(self.log_file, 'a+') as f:
-                    f.write(os.path.basename(os.getcwd()))
-                    f.write(filename)
-                    f.write("used linear fit for Y\n")
+                    f.write(os.path.join(path_to_file, filename))
+                    f.write(" used linear fit for Y\n")
 
         return [[Xslice, antenna, *coefX], [Xslice, antenna, *coefY]]
 
@@ -253,7 +252,7 @@ class TemplatesAnalyzer(object):
         os.chdir(self.directory)
 
         with open(self.log_file, 'a+') as file:
-            file.write(str(date.today()))
+            file.write(str(date.today()) + '\n')
 
         with futures.ProcessPoolExecutor() as executor:
             executor.map(self._analyze_simulation, glob.glob('SIM*/'))
