@@ -49,11 +49,11 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
                 lstY = lineY.split(', ')
                 if float(lstX[0]) == XSLICE:
                     if float(lstX[1]) == ANTENNA:
-                        A_0_x.append(float(lstX[2]) / n_slice / c / 1e2)
+                        A_0_x.append(float(lstX[2]) / n_slice)
                         b_x.append(float(lstX[3]))
                         c_x.append(float(lstX[4]))
                         X_max_x.append(float(lstX[5]))
-                        A_0_y.append(float(lstY[2]) / n_slice / c / 1e2)
+                        A_0_y.append(float(lstY[2]) / n_slice)
                         b_y.append(float(lstY[3]))
                         c_y.append(float(lstY[4]))
                         X_max_y.append(float(lstY[5]))
@@ -65,13 +65,13 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
     ax2.scatter(X_max_y[100:], A_0_y[100:], color=COLORS[ind], marker='x')
 
     ax1.set_xlabel(r"$X_{max}[g/cm^2]$")
-    ax1.set_ylabel(r"$A_0$ (x-component) [a.u.]")
+    ax1.set_ylabel(r"$A_0 / N_{slice}$ (x-component) [$V / \mu m$]")
     ax1.set_xlim([500, 950])
     ax1.set_title(f"X = {XSLICE} g/cm^2 r = {DISTANCES[ANTENNA] / 100} m")
     ax1.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
 
     ax2.set_xlabel(r"$X_{max}[g/cm^2]$")
-    ax2.set_ylabel(r"$A_0$ (y-component) [a.u.]")
+    ax2.set_ylabel(r"$A_0 / N_{slice}$ (y-component) [$V / \mu m$]")
     ax2.set_xlim([500, 950])
     ax2.set_title(f"X = {XSLICE} g/cm^2 r = {DISTANCES[ANTENNA] / 100} m")
     ax2.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
@@ -113,8 +113,8 @@ x_plot = np.arange(500, 900, 1)
 # ax1.legend()
 
 # Plot the parabola on top of the figures
-ax1.plot(x_plot, (arX[ANTENNA, 1] + arX[ANTENNA, 2] * x_plot + arX[ANTENNA, 3] * x_plot**2) / c / 1e2)
-ax2.plot(x_plot, (arY[ANTENNA, 1] + arY[ANTENNA, 2] * x_plot + arY[ANTENNA, 3] * x_plot**2) / c / 1e2)
+ax1.plot(x_plot, arX[ANTENNA, 1] + arX[ANTENNA, 2] * x_plot + arX[ANTENNA, 3] * x_plot**2)
+ax2.plot(x_plot, arY[ANTENNA, 1] + arY[ANTENNA, 2] * x_plot + arY[ANTENNA, 3] * x_plot**2)
 
 ax3.plot(x_plot, arX[ANTENNA, 4] + arX[ANTENNA, 5] * x_plot + arX[ANTENNA, 6] * x_plot**2)
 ax4.plot(x_plot, arY[ANTENNA, 4] + arY[ANTENNA, 5] * x_plot + arY[ANTENNA, 6] * x_plot**2)
