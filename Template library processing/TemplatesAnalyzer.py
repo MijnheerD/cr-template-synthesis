@@ -1,3 +1,7 @@
+"""
+TODO: make plotting markers dependent on particle type in .reas file
+"""
+
 import os
 import glob
 import numpy as np
@@ -322,3 +326,139 @@ class TemplatesAnalyzer(object):
 
         # Fit the amplitude parameters with a quadratic function
         self.fit_parameters()
+
+    def plot_param_xmax(self, slice, antenna, save_path='./', plot_fit=True, colors=None, plot_style='default'):
+        """
+        Plot the values of the parameters for a specific slice and antenna, with respect to Xmax. If the quadratic fits
+        have been performed, it can also show on the figures. The function assumes each energy to be in a separate
+        directory, contained in self.working_path, with the corresponding location of the .reas files in self.directory.
+        The values from self.param_path are used to plot the quadratic fits.
+        :param int slice: Grammage of the slice.
+        :param int antenna: Number of the antenna.
+        :param str save_path: Path to store the figures, defaults to current directory.
+        :param bool plot_fit: Whether to overlay to quadratic fits on top of the scatter plots.
+        :param list colors: Colors to be used for each directory.
+        :param str plot_style: Matplotlib style to use for the plots.
+        """
+        import matplotlib.pyplot as plt
+
+        # Convert paths to lists, to be consistent in creating file handle lists
+        if type(self.working_path) == str:
+            working_path = [self.working_path]
+            reas_path = [self.directory]
+        else:
+            working_path = self.working_path
+            reas_path = self.directory
+
+        if colors is None:
+            colors = plt.cm.get_cmap("hsv", len(self.working_path))
+        # Make a figure for every parameter
+        plt.style.use(plot_style)
+        fig1, [ax1, ax2] = plt.subplots(1, 2, figsize=(12, 6))
+        fig2, [ax3, ax4] = plt.subplots(1, 2, figsize=(12, 6))
+        fig3, [ax5, ax6] = plt.subplots(1, 2, figsize=(12, 6))
+
+        for ind, directory in enumerate(working_path):
+            a_0_x = []
+            b_x = []
+            c_x = []
+            x_max_x = []
+
+            a_0_y = []
+            b_y = []
+            c_y = []
+            x_max_y = []
+            for file in os.listdir(os.path.join(directory, 'fitX')):
+                n_slice = get_number_of_particles(os.path.join(reas_path[ind],
+                                                               'DAT' + file.split('.')[0].split('SIM')[1] + '.long'))
+                n_slice = n_slice[int(slice / 5 - 1)]
+                with open(os.path.join(directory, 'fitX', file), 'r') as fX, \
+                        open(os.path.join(directory, 'fitY', file), 'r') as fY:
+                    for lineX, lineY in zip(fX, fY):
+                        lst_x = lineX.split(', ')
+                        lst_y = lineY.split(', ')
+                        if float(lst_x[0]) == slice:
+                            if float(lst_x[1]) == antenna:
+                                a_0_x.append(float(lst_x[2]) / n_slice)
+                                b_x.append(float(lst_x[3]))
+                                c_x.append(float(lst_x[4]))
+                                x_max_x.append(float(lst_x[5]))
+                                a_0_y.append(float(lst_y[2]) / n_slice)
+                                b_y.append(float(lst_y[3]))
+                                c_y.append(float(lst_y[4]))
+                                x_max_y.append(float(lst_y[5]))
+                                break  # We know there is only 1 interesting entry per file
+
+            ax1.scatter(x_max_x[:100], a_0_x[:100], color=colors[ind])
+            ax1.scatter(x_max_x[100:], a_0_x[100:], color=colors[ind], marker='x')
+            ax2.scatter(x_max_y[:100], a_0_y[:100], color=colors[ind])
+            ax2.scatter(x_max_y[100:], a_0_y[100:], color=colors[ind], marker='x')
+
+            ax1.set_xlabel(r"$X_{max}[g/cm^2]$")
+            ax1.set_ylabel(r"$A_0 / N_{slice}$ (x-component) [$V / \mu m$]")
+            ax1.set_xlim([500, 950])
+            ax1.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax1.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
+
+            ax2.set_xlabel(r"$X_{max}[g/cm^2]$")
+            ax2.set_ylabel(r"$A_0 / N_{slice}$ (y-component) [$V / \mu m$]")
+            ax2.set_xlim([500, 950])
+            ax2.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax2.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
+
+            ax3.scatter(x_max_x[:100], b_x[:100], color=colors[ind])
+            ax3.scatter(x_max_x[100:], b_x[100:], color=colors[ind], marker='x')
+            ax4.scatter(x_max_y[:100], b_y[:100], color=colors[ind])
+            ax4.scatter(x_max_y[100:], b_y[100:], color=colors[ind], marker='x')
+
+            ax3.set_xlabel(r"$X_{max}[g/cm^2]$")
+            ax3.set_ylabel(r"$b$ (x-component) [1/MHz]")
+            ax3.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax3.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
+
+            ax4.set_xlabel(r"$X_{max}[g/cm^2]$")
+            ax4.set_ylabel(r"$b$ (y-component) [1/MHz]")
+            ax4.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax4.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
+
+            ax5.scatter(x_max_x[:100], c_x[:100], color=colors[ind])
+            ax5.scatter(x_max_x[100:], c_x[100:], color=colors[ind], marker='x')
+            ax6.scatter(x_max_y[:100], c_y[:100], color=colors[ind])
+            ax6.scatter(x_max_y[100:], c_y[100:], color=colors[ind], marker='x')
+
+            ax5.set_xlabel(r"$X_{max}[g/cm^2]$")
+            ax5.set_ylabel(r"$c$ (x-component) [$1/MHz^2$]")
+            ax5.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax5.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
+
+            ax6.set_xlabel(r"$X_{max}[g/cm^2]$")
+            ax6.set_ylabel(r"$c$ (y-component) [$1/MHz^2$]")
+            ax6.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax6.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
+
+        if plot_fit:
+            # Extract parameter values for the requested slice
+            arX = np.genfromtxt(os.path.join(self.param_path, 'fitX', 'slice' + str(slice) + '.dat'))
+            arY = np.genfromtxt(os.path.join(self.param_path, 'fitY', 'slice' + str(slice) + '.dat'))
+
+            x_plot = np.arange(500, 900, 1)
+
+            # Plot the parabola on top of the figures
+            ax1.plot(x_plot, arX[antenna, 1] + arX[antenna, 2] * x_plot + arX[antenna, 3] * x_plot ** 2)
+            ax2.plot(x_plot, arY[antenna, 1] + arY[antenna, 2] * x_plot + arY[antenna, 3] * x_plot ** 2)
+
+            ax3.plot(x_plot, arX[antenna, 4] + arX[antenna, 5] * x_plot + arX[antenna, 6] * x_plot ** 2)
+            ax4.plot(x_plot, arY[antenna, 4] + arY[antenna, 5] * x_plot + arY[antenna, 6] * x_plot ** 2)
+
+            ax5.plot(x_plot, arX[antenna, 7] + arX[antenna, 8] * x_plot + arX[antenna, 9] * x_plot ** 2)
+            ax6.plot(x_plot, arY[antenna, 7] + arY[antenna, 8] * x_plot + arY[antenna, 9] * x_plot ** 2)
+
+        # Make the figures active and save them
+        plt.figure(fig1)
+        plt.savefig(f'{save_path}A0_{antenna}x{slice}_f0_{self.fit_center}.png', bbox_inches='tight')
+
+        plt.figure(fig2)
+        plt.savefig(f'{save_path}b_{antenna}x{slice}_f0_{self.fit_center}.png', bbox_inches='tight')
+
+        plt.figure(fig3)
+        plt.savefig(f'{save_path}c_{antenna}x{slice}_f0_{self.fit_center}.png', bbox_inches='tight')
