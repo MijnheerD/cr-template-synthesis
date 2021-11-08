@@ -4,7 +4,7 @@ from scipy.optimize import curve_fit
 
 FIT_DIRECTORY = 'fitFiles17/'  # location of the files containing the fit parameters
 PARAM_DIRECTORY = 'paramFit17/'  # location to store the parameters of the quadratic fit
-DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna radial distances to shower core, in cm
+DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna_nr radial distances to shower core, in cm
 XSLICE = 550
 ANTENNA = 3
 
@@ -66,13 +66,13 @@ while reading:
 
     # Save fitted parameters to file
     with open(os.path.join(PARAM_DIRECTORY, 'fitX', 'slice' + lstX[0] + '.dat'), 'a+') as f:
-        f.write('antenna' + lstX[1] + '\t')
+        f.write('antenna_nr' + lstX[1] + '\t')
         f.writelines(map(lambda x: str(x) + '\t', resX_A))
         f.writelines(map(lambda x: str(x) + '\t', resX_b))
         f.writelines(map(lambda x: str(x) + '\t', resX_c))
         f.write('\n')
     with open(os.path.join(PARAM_DIRECTORY, 'fitY', 'slice' + lstY[0] + '.dat'), 'a+') as f:
-        f.write('antenna' + lstY[1] + '\t')
+        f.write('antenna_nr' + lstY[1] + '\t')
         f.writelines(map(lambda x: str(x) + '\t', resY_A))
         f.writelines(map(lambda x: str(x) + '\t', resY_b))
         f.writelines(map(lambda x: str(x) + '\t', resY_c))

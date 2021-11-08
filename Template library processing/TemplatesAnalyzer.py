@@ -327,13 +327,13 @@ class TemplatesAnalyzer(object):
         # Fit the amplitude parameters with a quadratic function
         self.fit_parameters()
 
-    def plot_param_xmax(self, slice, antenna, save_path='./', plot_fit=True, colors=None, plot_style='default'):
+    def plot_param_xmax(self, x_slice, antenna, save_path='./', plot_fit=True, colors=None, plot_style='default'):
         """
         Plot the values of the parameters for a specific slice and antenna, with respect to Xmax. If the quadratic fits
         have been performed, it can also show on the figures. The function assumes each energy to be in a separate
         directory, contained in self.working_path, with the corresponding location of the .reas files in self.directory.
         The values from self.param_path are used to plot the quadratic fits.
-        :param int slice: Grammage of the slice.
+        :param int x_slice: Grammage of the slice.
         :param int antenna: Number of the antenna.
         :param str save_path: Path to store the figures, defaults to current directory.
         :param bool plot_fit: Whether to overlay to quadratic fits on top of the scatter plots.
@@ -371,13 +371,13 @@ class TemplatesAnalyzer(object):
             for file in os.listdir(os.path.join(directory, 'fitX')):
                 n_slice = get_number_of_particles(os.path.join(reas_path[ind],
                                                                'DAT' + file.split('.')[0].split('SIM')[1] + '.long'))
-                n_slice = n_slice[int(slice / 5 - 1)]
+                n_slice = n_slice[int(x_slice / 5 - 1)]
                 with open(os.path.join(directory, 'fitX', file), 'r') as fX, \
                         open(os.path.join(directory, 'fitY', file), 'r') as fY:
                     for lineX, lineY in zip(fX, fY):
                         lst_x = lineX.split(', ')
                         lst_y = lineY.split(', ')
-                        if float(lst_x[0]) == slice:
+                        if float(lst_x[0]) == x_slice:
                             if float(lst_x[1]) == antenna:
                                 a_0_x.append(float(lst_x[2]) / n_slice)
                                 b_x.append(float(lst_x[3]))
@@ -397,13 +397,13 @@ class TemplatesAnalyzer(object):
             ax1.set_xlabel(r"$X_{max}[g/cm^2]$")
             ax1.set_ylabel(r"$A_0 / N_{slice}$ (x-component) [$V / \mu m$]")
             ax1.set_xlim([500, 950])
-            ax1.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax1.set_title(f"X = {x_slice} g/cm^2 r = {self.distances[antenna] / 100} m")
             ax1.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
 
             ax2.set_xlabel(r"$X_{max}[g/cm^2]$")
             ax2.set_ylabel(r"$A_0 / N_{slice}$ (y-component) [$V / \mu m$]")
             ax2.set_xlim([500, 950])
-            ax2.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax2.set_title(f"X = {x_slice} g/cm^2 r = {self.distances[antenna] / 100} m")
             ax2.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
 
             ax3.scatter(x_max_x[:100], b_x[:100], color=colors[ind])
@@ -413,12 +413,12 @@ class TemplatesAnalyzer(object):
 
             ax3.set_xlabel(r"$X_{max}[g/cm^2]$")
             ax3.set_ylabel(r"$b$ (x-component) [1/MHz]")
-            ax3.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax3.set_title(f"X = {x_slice} g/cm^2 r = {self.distances[antenna] / 100} m")
             ax3.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
 
             ax4.set_xlabel(r"$X_{max}[g/cm^2]$")
             ax4.set_ylabel(r"$b$ (y-component) [1/MHz]")
-            ax4.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax4.set_title(f"X = {x_slice} g/cm^2 r = {self.distances[antenna] / 100} m")
             ax4.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
 
             ax5.scatter(x_max_x[:100], c_x[:100], color=colors[ind])
@@ -428,18 +428,18 @@ class TemplatesAnalyzer(object):
 
             ax5.set_xlabel(r"$X_{max}[g/cm^2]$")
             ax5.set_ylabel(r"$c$ (x-component) [$1/MHz^2$]")
-            ax5.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax5.set_title(f"X = {x_slice} g/cm^2 r = {self.distances[antenna] / 100} m")
             ax5.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
 
             ax6.set_xlabel(r"$X_{max}[g/cm^2]$")
             ax6.set_ylabel(r"$c$ (y-component) [$1/MHz^2$]")
-            ax6.set_title(f"X = {slice} g/cm^2 r = {self.distances[antenna] / 100} m")
+            ax6.set_title(f"X = {x_slice} g/cm^2 r = {self.distances[antenna] / 100} m")
             ax6.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
 
         if plot_fit:
             # Extract parameter values for the requested slice
-            arX = np.genfromtxt(os.path.join(self.param_path, 'fitX', 'slice' + str(slice) + '.dat'))
-            arY = np.genfromtxt(os.path.join(self.param_path, 'fitY', 'slice' + str(slice) + '.dat'))
+            arX = np.genfromtxt(os.path.join(self.param_path, 'fitX', 'slice' + str(x_slice) + '.dat'))
+            arY = np.genfromtxt(os.path.join(self.param_path, 'fitY', 'slice' + str(x_slice) + '.dat'))
 
             x_plot = np.arange(500, 900, 1)
 
@@ -455,10 +455,10 @@ class TemplatesAnalyzer(object):
 
         # Make the figures active and save them
         plt.figure(fig1)
-        plt.savefig(f'{save_path}A0_{antenna}x{slice}_f0_{self.fit_center}.png', bbox_inches='tight')
+        plt.savefig(f'{save_path}A0_{antenna}x{x_slice}_f0_{self.fit_center}.png', bbox_inches='tight')
 
         plt.figure(fig2)
-        plt.savefig(f'{save_path}b_{antenna}x{slice}_f0_{self.fit_center}.png', bbox_inches='tight')
+        plt.savefig(f'{save_path}b_{antenna}x{x_slice}_f0_{self.fit_center}.png', bbox_inches='tight')
 
         plt.figure(fig3)
-        plt.savefig(f'{save_path}c_{antenna}x{slice}_f0_{self.fit_center}.png', bbox_inches='tight')
+        plt.savefig(f'{save_path}c_{antenna}x{x_slice}_f0_{self.fit_center}.png', bbox_inches='tight')

@@ -10,13 +10,13 @@ def get_number_of_particles(path, x_slice):
     return np.sum(long[int(x_slice / 5 + 1), :])
 
 
-FIT_DIRECTORIES = ['fitFiles17/', 'fitFiles18/', 'fitFiles19/']  # location of the files containing the fit parameters
+FIT_DIRECTORIES = ['fitFilesCenter17/', 'fitFilesCenter18/', 'fitFilesCenter19/']  # location of the files containing the fit parameters
 COLORS = ['cyan', 'magenta', 'yellow']
 REAS_DIRECTORY = ['/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/',
                   '/mnt/hgfs/Shared data/BulkSynth/bulksynth-18/',
                   '/mnt/hgfs/Shared data/BulkSynth/bulksynth-19/']
-PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramFit/'
-DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna radial distances to shower core, in cm
+PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramFitCenter/'
+DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna_nr radial distances to shower core, in cm
 XSLICE = 655
 ANTENNA = 3
 
