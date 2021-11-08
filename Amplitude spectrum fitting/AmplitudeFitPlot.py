@@ -1,8 +1,8 @@
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import binned_statistic
 from scipy.optimize import curve_fit
-from scipy.constants import c
 
 
 def get_number_of_particles(path, x_slice):
@@ -10,24 +10,47 @@ def get_number_of_particles(path, x_slice):
     return np.sum(long[int(x_slice / 5 + 1), :])
 
 
-FIT_DIRECTORIES = ['fitFilesCenter17/', 'fitFilesCenter18/', 'fitFilesCenter19/']  # location of the files containing the fit parameters
+def make_profile(bins, x_data, y_data):
+    mean = binned_statistic(x_data, y_data, statistic='mean', bins=len(bins) - 1, range=(min(bins), max(bins)))
+    std = binned_statistic(x_data, y_data, statistic='std', bins=len(bins) - 1, range=(min(bins), max(bins)))
+    return mean[0], std[0]
+
+
+def fit_profile(fitfun, bins, mean, std):
+    bin_centers = (bins[1:] + bins[:-1]) / 2
+    to_fit = list(zip(*[(bin_centers[i], mean[i], std[i]) for i in range(len(bin_centers)) if std[i] != 0]))
+    popt, pcov = curve_fit(fitfun,  to_fit[0], to_fit[1], sigma=to_fit[2])
+    return popt, pcov
+
+
+def plot_fit_profile(ax, x_plot, param, bins, mean, std, bar=False):
+    width = int(bins[1] - bins[0])
+    ax.plot(x_plot, param[0] + param[1] * x_plot + param[2] * x_plot ** 2, label='Fit to profile')
+    if bar:
+        ax.bar(bins[:-1], mean, align='edge', width=width, color='w', alpha=0.3, yerr=std, ecolor='w')
+
+
+FIT_DIRECTORIES = ['fitFiles5017', 'fitFiles5018', 'fitFiles5019']  # location of the files containing fit parameters
 COLORS = ['cyan', 'magenta', 'yellow']
-REAS_DIRECTORY = ['/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/',
-                  '/mnt/hgfs/Shared data/BulkSynth/bulksynth-18/',
-                  '/mnt/hgfs/Shared data/BulkSynth/bulksynth-19/']
-PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramFitCenter/'
+REAS_DIRECTORY = 'CORSIKA_long_files'
+PARAM_DIRECTORY = 'paramFit50'
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna_nr radial distances to shower core, in cm
-XSLICE = 655
+XSLICE = 350
 ANTENNA = 3
 
 arX = np.genfromtxt(os.path.join(PARAM_DIRECTORY, 'fitX', 'slice' + str(XSLICE) + '.dat'))
 arY = np.genfromtxt(os.path.join(PARAM_DIRECTORY, 'fitY', 'slice' + str(XSLICE) + '.dat'))
 
 # Make the figures to plot the parameters
-# plt.style.use('dark_background')
+plt.style.use('dark_background')
 fig1, [ax1, ax2] = plt.subplots(1, 2, figsize=(12, 6))
 fig2, [ax3, ax4] = plt.subplots(1, 2, figsize=(12, 6))
 fig3, [ax5, ax6] = plt.subplots(1, 2, figsize=(12, 6))
+
+A_x_tot, A_y_tot = [], []
+b_x_tot, b_y_tot = [], []
+c_x_tot, c_y_tot = [], []
+X_max_tot = []
 
 for ind, directory in enumerate(FIT_DIRECTORIES):
     A_0_x = []
@@ -40,7 +63,7 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
     c_y = []
     X_max_y = []
     for file in os.listdir(os.path.join(directory, 'fitX')):
-        n_slice = get_number_of_particles(os.path.join(REAS_DIRECTORY[ind],
+        n_slice = get_number_of_particles(os.path.join(REAS_DIRECTORY,
                                                        'DAT' + file.split('.')[0].split('SIM')[1] + '.long'), XSLICE)
         with open(os.path.join(directory, 'fitX', file), 'r') as fX, \
                 open(os.path.join(directory, 'fitY', file), 'r') as fY:
@@ -106,21 +129,43 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
     ax6.set_title(f"X = {XSLICE} g/cm^2 r = {DISTANCES[ANTENNA] / 100} m")
     ax6.ticklabel_format(axis='y', useMathText=True, scilimits=(0, 0))
 
+    A_x_tot.extend(A_0_x)
+    A_y_tot.extend(A_0_y)
+    b_x_tot.extend(b_x)
+    b_y_tot.extend(b_y)
+    c_x_tot.extend(c_x)
+    c_y_tot.extend(c_y)
+    X_max_tot.extend(X_max_x)
+
 x_plot = np.arange(500, 900, 1)
 
 # ax1.axvline(x=XSLICE, linestyle='--', label=r'$X_{slice}$')
 # ax1.axvline(x=-resX[1]/(2*resX[2]), linestyle=':', label='Top of parabola')
 # ax1.legend()
 
+# Calculate, fit and plot profiles
+bin_edges = np.arange(min(X_max_tot), max(X_max_tot) + 10, 10)
+axis = [ax1, ax2, ax3, ax4, ax5, ax6]
+plots = [A_x_tot, A_y_tot, b_x_tot, b_y_tot, c_x_tot, c_y_tot]
+
+for ind, plot in enumerate(plots):
+    mean, std = make_profile(bin_edges, X_max_tot, plot)
+    fit_params, _ = fit_profile(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2,
+                                bin_edges, mean, std)
+    plot_fit_profile(axis[ind], x_plot, fit_params, bin_edges, mean, std)
+
 # Plot the parabola on top of the figures
-ax1.plot(x_plot, arX[ANTENNA, 1] + arX[ANTENNA, 2] * x_plot + arX[ANTENNA, 3] * x_plot**2)
-ax2.plot(x_plot, arY[ANTENNA, 1] + arY[ANTENNA, 2] * x_plot + arY[ANTENNA, 3] * x_plot**2)
+ax1.plot(x_plot, arX[ANTENNA, 1] + arX[ANTENNA, 2] * x_plot + arX[ANTENNA, 3] * x_plot ** 2, label='Fit to scatter')
+ax2.plot(x_plot, arY[ANTENNA, 1] + arY[ANTENNA, 2] * x_plot + arY[ANTENNA, 3] * x_plot ** 2, label='Fit to scatter')
 
-ax3.plot(x_plot, arX[ANTENNA, 4] + arX[ANTENNA, 5] * x_plot + arX[ANTENNA, 6] * x_plot**2)
-ax4.plot(x_plot, arY[ANTENNA, 4] + arY[ANTENNA, 5] * x_plot + arY[ANTENNA, 6] * x_plot**2)
+ax3.plot(x_plot, arX[ANTENNA, 4] + arX[ANTENNA, 5] * x_plot + arX[ANTENNA, 6] * x_plot ** 2, label='Fit to scatter')
+ax4.plot(x_plot, arY[ANTENNA, 4] + arY[ANTENNA, 5] * x_plot + arY[ANTENNA, 6] * x_plot ** 2, label='Fit to scatter')
 
-ax5.plot(x_plot, arX[ANTENNA, 7] + arX[ANTENNA, 8] * x_plot + arX[ANTENNA, 9] * x_plot**2)
-ax6.plot(x_plot, arY[ANTENNA, 7] + arY[ANTENNA, 8] * x_plot + arY[ANTENNA, 9] * x_plot**2)
+ax5.plot(x_plot, arX[ANTENNA, 7] + arX[ANTENNA, 8] * x_plot + arX[ANTENNA, 9] * x_plot ** 2, label='Fit to scatter')
+ax6.plot(x_plot, arY[ANTENNA, 7] + arY[ANTENNA, 8] * x_plot + arY[ANTENNA, 9] * x_plot ** 2, label='Fit to scatter')
+
+for ax in axis:
+    ax.legend()
 
 # Make the figures active and save them
 plt.figure(fig1)

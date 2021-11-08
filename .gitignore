@@ -135,4 +135,5 @@ dmypy.json
 /Parallel processing tests
 /Amplitude spectrum fitting/fitFiles*
 /Amplitude spectrum fitting/paramE/
+/Amplitude spectrum fitting/CORSIKA_long_files/
 /Figures
