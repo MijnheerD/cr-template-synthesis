@@ -57,10 +57,12 @@ class ShowerDataC7(object):
         self.name = os.path.basename(os.path.normpath(sim_directory)).split('_')[0]
         self.number = int(self.name[3:])
 
-        self.particle_numbers = 0
-        self.GH = []
-        self.x_max = 0
-        self.energy = 0
+        self.particle_numbers = None
+        self.atm_slices = None
+        self.GH = None
+
+        self.x_max = None
+        self.energy = None
         self.type = None
 
         self.traces = None
@@ -73,10 +75,11 @@ class ShowerDataC7(object):
     def read_long(self):
         long_file = f'../DAT{self.number}.long'
 
-        long = np.genfromtxt(long_file, skip_header=2, skip_footer=216, usecols=(2, 3))
+        long = np.genfromtxt(long_file, skip_header=2, skip_footer=216, usecols=(0, 2, 3))
         hillas = np.genfromtxt(long_file, skip_header=422, skip_footer=2)
 
-        self.particle_numbers = np.sum(long, axis=1)
+        self.particle_numbers = np.sum(long[:, 1:], axis=1)
+        self.atm_slices = long[:, 0]
         self.GH = hillas[2:]
 
     def read_reas(self):
@@ -88,28 +91,30 @@ class ShowerDataC7(object):
                     self.x_max = float(line.split()[2])
                 elif 'PrimaryParticleEnergy' in line:
                     self.energy = float(line.split()[2])
+                elif 'PrimaryParticleType' in line:
+                    self.type = int(line.split()[2])
 
-    def read_time_traces(self, slice_thickness=5):
+    def read_time_traces(self):
         from scipy.constants import c as c_vacuum
 
         bins_file = f'../SIM{self.number}_coreas.bins'
         signal_files = os.listdir('.')
 
         nr_of_antennas = len(np.unique(np.genfromtxt(bins_file)[:, 1]))
-        nr_of_slices = len(signal_files)/nr_of_antennas
+        nr_of_slices = int(len(signal_files)/nr_of_antennas)
         nr_of_time_steps = len(np.genfromtxt(signal_files[0]))
         nr_of_pol = 3
         traces = np.zeros((nr_of_slices, nr_of_antennas, nr_of_time_steps, nr_of_pol))
 
         for file in signal_files:
-            file_numbers = file.split('_')[1]
+            file_numbers = file.split('_')[1].split('.')[0]
             antenna = int(file_numbers.split('x')[0])
             x_slice = int(file_numbers.split('x')[1])
 
             data = np.genfromtxt(file) * c_vacuum * 1e2
-            traces[int(x_slice / 5 - 1), antenna, :, :] = data[:, 1:]
+            traces[np.where(self.atm_slices == x_slice)[0][0], antenna, :, :] = data[:, 1:]
 
         self.traces = traces
 
     def get_sa_trace(self, x_slice, antenna):
-        return self.traces[x_slice, antenna, :, :]
+        return self.traces[np.where(self.atm_slices == x_slice)[0][0], antenna, :, :]

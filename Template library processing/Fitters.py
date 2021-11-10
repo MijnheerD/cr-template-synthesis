@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import curve_fit
+from NumpyEncoder import write_file_json, read_file_json
 
 
 class Fitter(object):
@@ -79,16 +80,15 @@ class AmplitudeFitter(Fitter):
 class ParameterFitter(Fitter):
     """
     This object fits parameters with a quadratic function, using the first dimension as the observations and second
-    dimension as the list of parameters. One of these should be the list of x-values, indicated by the x_axis parameter
-    in the constructor.
+    dimension as the list of parameters. Each parameter is fitted using the same list of x-values.
     """
-    def __init__(self, params, std_params, x_axis=0):
+    def __init__(self, params, std_params, x_values):
         super().__init__(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2)
         self.p0 = [1, 1, 1]
         self.sigma = std_params
 
-        self.x = params[:, x_axis, :]
-        self.parameters = np.delete(params, x_axis, axis=1)
+        self.x = x_values
+        self.parameters = params
 
     def fit_parameters(self):
         opt = np.zeros((3, 3, self.parameters.shape[2]))
@@ -99,3 +99,9 @@ class ParameterFitter(Fitter):
             cov[:, :, pol] = self.cov
         self.opt = opt
         self.cov = cov
+
+    def save_to_file(self, file):
+        write_file_json(file, self.opt)
+
+    def load_from_file(self, file):
+        self.opt = read_file_json(file)
