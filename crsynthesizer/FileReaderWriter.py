@@ -98,7 +98,7 @@ class ShowerDataC7(object):
         from scipy.constants import c as c_vacuum
 
         bins_file = f'../SIM{self.number}_coreas.bins'
-        signal_files = os.listdir('.')
+        signal_files = os.listdir('../Template library processing')
 
         nr_of_antennas = len(np.unique(np.genfromtxt(bins_file)[:, 1]))
         nr_of_slices = int(len(signal_files)/nr_of_antennas)
