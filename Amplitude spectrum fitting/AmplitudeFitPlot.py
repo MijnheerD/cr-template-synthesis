@@ -32,10 +32,10 @@ def plot_fit_profile(ax, x_plot, param, bins, mean, std, bar=False):
 
 FIT_DIRECTORIES = ['fitFiles5017', 'fitFiles5018', 'fitFiles5019']  # location of the files containing fit parameters
 COLORS = ['cyan', 'magenta', 'yellow']
-REAS_DIRECTORY = 'CORSIKA_long_files'
+REAS_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/CORSIKA_long_files'
 PARAM_DIRECTORY = 'paramFit50'
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna_nr radial distances to shower core, in cm
-XSLICE = 350
+XSLICE = 875
 ANTENNA = 3
 
 arX = np.genfromtxt(os.path.join(PARAM_DIRECTORY, 'fitX', 'slice' + str(XSLICE) + '.dat'))
@@ -139,10 +139,6 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
 
 x_plot = np.arange(500, 900, 1)
 
-# ax1.axvline(x=XSLICE, linestyle='--', label=r'$X_{slice}$')
-# ax1.axvline(x=-resX[1]/(2*resX[2]), linestyle=':', label='Top of parabola')
-# ax1.legend()
-
 # Calculate, fit and plot profiles
 bin_edges = np.arange(min(X_max_tot), max(X_max_tot) + 10, 10)
 axis = [ax1, ax2, ax3, ax4, ax5, ax6]
@@ -155,17 +151,35 @@ for ind, plot in enumerate(plots):
     plot_fit_profile(axis[ind], x_plot, fit_params, bin_edges, mean, std)
 
 # Plot the parabola on top of the figures
-ax1.plot(x_plot, arX[ANTENNA, 1] + arX[ANTENNA, 2] * x_plot + arX[ANTENNA, 3] * x_plot ** 2, label='Fit to scatter')
-ax2.plot(x_plot, arY[ANTENNA, 1] + arY[ANTENNA, 2] * x_plot + arY[ANTENNA, 3] * x_plot ** 2, label='Fit to scatter')
+ax1.plot(x_plot, arX[ANTENNA, 1] + arX[ANTENNA, 2] * x_plot + arX[ANTENNA, 3] * x_plot ** 2, label='Fit from file')
+ax2.plot(x_plot, arY[ANTENNA, 1] + arY[ANTENNA, 2] * x_plot + arY[ANTENNA, 3] * x_plot ** 2, label='Fit from file')
 
-ax3.plot(x_plot, arX[ANTENNA, 4] + arX[ANTENNA, 5] * x_plot + arX[ANTENNA, 6] * x_plot ** 2, label='Fit to scatter')
-ax4.plot(x_plot, arY[ANTENNA, 4] + arY[ANTENNA, 5] * x_plot + arY[ANTENNA, 6] * x_plot ** 2, label='Fit to scatter')
+ax3.plot(x_plot, arX[ANTENNA, 4] + arX[ANTENNA, 5] * x_plot + arX[ANTENNA, 6] * x_plot ** 2, label='Fit from file')
+ax4.plot(x_plot, arY[ANTENNA, 4] + arY[ANTENNA, 5] * x_plot + arY[ANTENNA, 6] * x_plot ** 2, label='Fit from file')
 
-ax5.plot(x_plot, arX[ANTENNA, 7] + arX[ANTENNA, 8] * x_plot + arX[ANTENNA, 9] * x_plot ** 2, label='Fit to scatter')
-ax6.plot(x_plot, arY[ANTENNA, 7] + arY[ANTENNA, 8] * x_plot + arY[ANTENNA, 9] * x_plot ** 2, label='Fit to scatter')
+ax5.plot(x_plot, arX[ANTENNA, 7] + arX[ANTENNA, 8] * x_plot + arX[ANTENNA, 9] * x_plot ** 2, label='Fit from file')
+ax6.plot(x_plot, arY[ANTENNA, 7] + arY[ANTENNA, 8] * x_plot + arY[ANTENNA, 9] * x_plot ** 2, label='Fit from file')
 
-for ax in axis:
+# Fit the tot lists directly and plot them
+resX_A, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, A_x_tot)
+resX_b, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, b_x_tot)
+resX_c, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, c_x_tot)
+resY_A, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, A_y_tot)
+resY_b, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, b_y_tot)
+resY_c, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, c_y_tot)
+
+ax1.plot(x_plot, resX_A[0] + resX_A[1] * x_plot + resX_A[2] * x_plot ** 2, label='Fit to scatter')
+ax2.plot(x_plot, resY_A[0] + resY_A[1] * x_plot + resY_A[2] * x_plot ** 2, label='Fit to scatter')
+
+ax3.plot(x_plot, resX_b[0] + resX_b[1] * x_plot + resX_b[2] * x_plot ** 2, label='Fit to scatter')
+ax4.plot(x_plot, resY_b[0] + resY_b[1] * x_plot + resY_b[2] * x_plot ** 2, label='Fit to scatter')
+
+ax5.plot(x_plot, resX_c[0] + resX_c[1] * x_plot + resX_c[2] * x_plot ** 2, label='Fit to scatter')
+ax6.plot(x_plot, resY_c[0] + resY_c[1] * x_plot + resY_c[2] * x_plot ** 2, label='Fit to scatter')
+
+for ind, ax in enumerate(axis):
     ax.legend()
+    ax.set_ylim(np.percentile(plots[ind], 5)-3*np.std(plots[ind]), np.percentile(plots[ind], 95)+3*np.std(plots[ind]))
 
 # Make the figures active and save them
 plt.figure(fig1)
