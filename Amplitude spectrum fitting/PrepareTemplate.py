@@ -1,10 +1,11 @@
 import os
 import glob
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.constants import c as c_vacuum
 
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
-PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramFit50/'
+PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramProfileFit50/'
 TEMPLATE_NR = '100052'
 TARGET_NR = '200013'
 
@@ -78,12 +79,12 @@ for slice_nr in range(n_slice):
         with open(f'raw_{antenna_nr}x{int((slice_nr + 1) * 5)}.dat', 'r') as file:
             data = np.genfromtxt(file) * c_vacuum * 1e2
 
-        spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:], norm='forward')
-        amplitude = np.abs(spectrum) * 2  # Need to multiply by 2 because 1-sided FT
+        spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:]) # Normalisation must be consistent with IRFFT
+        amplitude = np.abs(spectrum)
         phase = np.angle(spectrum)
 
-        A[antenna_nr, slice_nr, :, :] = amplitude[f_range][:, :2]
-        Phi[antenna_nr, slice_nr, :, :] = phase[f_range][:, :2]
+        A[antenna_nr, slice_nr, :, :] = amplitude[f_range][:, :n_pol]
+        Phi[antenna_nr, slice_nr, :, :] = phase[f_range][:, :n_pol]
 
     with open(os.path.join(PARAM_DIRECTORY, 'fitX', f'slice{int((slice_nr + 1) * 5)}.dat'), 'r') as fileX, \
             open(os.path.join(PARAM_DIRECTORY, 'fitY', f'slice{int((slice_nr + 1) * 5)}.dat'), 'r') as fileY:
@@ -93,9 +94,6 @@ for slice_nr in range(n_slice):
         p_A0_x, p_A0_y = dataX[:, 1:4], dataY[:, 1:4]
         p_b_x, p_b_y = dataX[:, 4:7], dataY[:, 4:7]
         p_c_x, p_c_y = dataX[:, 7:], dataY[:, 7:]
-
-        if slice_nr == 90:
-            print("Here")
 
         A0[:, slice_nr, 0], A0[:, slice_nr, 1] = np.matmul(p_A0_x, x_max_vector), np.matmul(p_A0_y, x_max_vector)
         b[:, slice_nr, 0], b[:, slice_nr, 1] = np.matmul(p_b_x, x_max_vector), np.matmul(p_b_y, x_max_vector)
@@ -139,4 +137,16 @@ spectrum = np.apply_along_axis(np.fft.rfft, 0, data)
 filtered = spectrum[f_range]
 signal = np.apply_along_axis(np.fft.irfft, 0, filtered)[:, :2]
 
-signal_synth = E_synth[antenna, :, f_check_range, :]
+signal_synth = np.sum(np.apply_along_axis(np.fft.irfft, 0, E_synth[antenna, :, f_check_range, :]), axis=1)
+
+fig, [ax1, ax2] = plt.subplots(1, 2, figsize=(12, 6))
+
+ax1.plot(signal[:, 0], label='Real')
+ax1.plot(signal_synth[:, 0], label='Synthesized')
+ax1.legend()
+
+ax2.plot(signal[:, 1], label='Real')
+ax2.plot(signal_synth[:, 1], label='Synthesized')
+ax2.legend()
+
+plt.show()
