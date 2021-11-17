@@ -28,11 +28,11 @@ def amplitude_fit_slice(fdata, ydata, x, r, f0=0):
 
 
 distances = [1, 4000, 7500, 11000, 15000, 37500]
-files_path = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-18/'
+files_path = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
 david_path = '/mnt/hgfs/Shared data/ampfitQ/'
-sim = '110002'
-antenna = 3
-Xslice = 655
+sim = '100052'
+antenna = 0
+Xslice = 25
 
 with open(files_path+'SIM'+sim+f'_coreas/raw_{antenna}x{Xslice}.dat', 'r') as file:
     data = np.genfromtxt(file) * c_vacuum * 1e2  # conversion from statV/cm to microV/m
@@ -50,15 +50,15 @@ plt.plot(freq[frange]/1e6, filtered[:, 1], label='y-component (Geo)')
 #plt.ylim([0, 8.5])
 plt.xlabel('f [MHz]')
 plt.ylabel(r'A [\mu V / m]$')
-plt.title(f'r = {distances[antenna]/100}m, Xslice = {Xslice} g/cm^2')
+plt.title(f'r = {distances[antenna_nr]/100}m, Xslice = {Xslice} g/cm^2')
 plt.legend()
 plt.show()
 '''
 coefX, dX = amplitude_fit_slice(freq[frange],  filtered[:, 0], Xslice, distances[antenna], f0=250)
 coefY, dY = amplitude_fit_slice(freq[frange],  filtered[:, 1], Xslice, distances[antenna], f0=250)
 
-# coef0X, d0X = amplitude_fit_slice(freq[frange]-2.5*1e8, ampXfiltered, Xslice, distances[antenna])
-# coef0Y, d0Y = amplitude_fit_slice(freq[frange]-2.5*1e8, ampYfiltered, Xslice, distances[antenna])
+# coef0X, d0X = amplitude_fit_slice(freq[frange]-2.5*1e8, ampXfiltered, Xslice, distances[antenna_nr])
+# coef0Y, d0Y = amplitude_fit_slice(freq[frange]-2.5*1e8, ampYfiltered, Xslice, distances[antenna_nr])
 
 print('The x component has parameters', *coefX)
 print('The y component has parameters', *coefY)
@@ -66,8 +66,8 @@ print('The y component has parameters', *coefY)
 david_data = np.genfromtxt(david_path + sim + 'ampfit_Q.txt')
 david_data = david_data.reshape((207, 6, 2, 3))
 
-print('David x component has parameters', *david_data[int(Xslice/5 - 1), antenna, 0, :])
-print('David y component has parameters', *david_data[int(Xslice/5 - 1), antenna, 1, :])
+print('David x component has parameters', *david_data[int(Xslice/5 - 1), antenna_nr, 0, :])
+print('David y component has parameters', *david_data[int(Xslice/5 - 1), antenna_nr, 1, :])
 '''
 fig = plt.figure()
 
@@ -75,10 +75,10 @@ ax = fig.add_subplot(121)
 ax.plot(freq[frange]/1e6,  filtered[:, 0], linestyle='--', color='orange')
 ax.plot(freq[frange]/1e6, amplitude_fun_slice(freq[frange]/1e6, (coefX[0]), coefX[1], coefX[2], dX, f0=250),
         color='orange', label='My fit')
-# ax.plot(freq[frange]/1e6, amplitude_fun_slice(freq[frange]/1e6, *david_data[int(Xslice/5 - 1), antenna, 0, :], dX-0.11e-17),
+# ax.plot(freq[frange]/1e6, amplitude_fun_slice(freq[frange]/1e6, *david_data[int(Xslice/5 - 1), antenna_nr, 0, :], dX-0.11e-17),
 #         linestyle='dotted', color='black', label='David result')
 ax.set_xlabel('Frequency (MHz)')
-#ax.set_yscale('log')
+# ax.set_yscale('log')
 ax.set_title('The x-component')
 ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
 # ax.ticklabel_format(scilimits=(-10, -10), axis='y')
@@ -88,9 +88,10 @@ ax2 = fig.add_subplot(122)
 ax2.plot(freq[frange]/1e6,  filtered[:, 1], linestyle='--', color='blue')
 ax2.plot(freq[frange]/1e6, amplitude_fun_slice(freq[frange]/1e6, (coefY[0]), coefY[1], coefY[2], dY, f0=250),
          color='blue', label='My fit')
-# ax2.plot(freq[frange]/1e6, amplitude_fun_slice(freq[frange]/1e6, *david_data[int(Xslice/5 - 1), antenna, 1, :], dY-0.23e-17),
+# ax2.plot(freq[frange]/1e6, amplitude_fun_slice(freq[frange]/1e6, *david_data[int(Xslice/5 - 1), antenna_nr, 1, :], dY-0.23e-17),
 #          linestyle='dotted', color='black', label='David result')
 ax2.set_xlabel('Frequency (MHz)')
+# ax2.set_yscale('log')
 ax2.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
 # ax2.ticklabel_format(scilimits=(-10, -10), axis='y')
 ax2.set_title('The y-component')

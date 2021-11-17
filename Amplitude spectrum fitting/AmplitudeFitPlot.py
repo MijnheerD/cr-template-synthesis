@@ -7,7 +7,7 @@ from scipy.optimize import curve_fit
 
 def get_number_of_particles(path, x_slice):
     long = np.genfromtxt(path, skip_header=2, skip_footer=216, usecols=(2, 3))
-    return np.sum(long[int(x_slice / 5 + 1), :])
+    return np.sum(long[int(x_slice / 5 - 1), :])
 
 
 def make_profile(bins, x_data, y_data):
@@ -19,7 +19,8 @@ def make_profile(bins, x_data, y_data):
 def fit_profile(fitfun, bins, mean, std):
     bin_centers = (bins[1:] + bins[:-1]) / 2
     to_fit = list(zip(*[(bin_centers[i], mean[i], std[i]) for i in range(len(bin_centers)) if std[i] != 0]))
-    popt, pcov = curve_fit(fitfun,  to_fit[0], to_fit[1], sigma=to_fit[2])
+    popt, pcov = curve_fit(fitfun,  to_fit[0], to_fit[1],
+                           p0=[np.median(to_fit[1]), 1e-8, 1e-11], sigma=to_fit[2])
     return popt, pcov
 
 
@@ -33,10 +34,10 @@ def plot_fit_profile(ax, x_plot, param, bins, mean, std, bar=False):
 FIT_DIRECTORIES = ['fitFiles5017', 'fitFiles5018', 'fitFiles5019']  # location of the files containing fit parameters
 COLORS = ['cyan', 'magenta', 'yellow']
 REAS_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/CORSIKA_long_files'
-PARAM_DIRECTORY = 'paramFit50'
+PARAM_DIRECTORY = 'paramProfileFit50'
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna_nr radial distances to shower core, in cm
-XSLICE = 875
-ANTENNA = 3
+XSLICE = 25
+ANTENNA = 0
 
 arX = np.genfromtxt(os.path.join(PARAM_DIRECTORY, 'fitX', 'slice' + str(XSLICE) + '.dat'))
 arY = np.genfromtxt(os.path.join(PARAM_DIRECTORY, 'fitY', 'slice' + str(XSLICE) + '.dat'))
@@ -65,6 +66,8 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
     for file in os.listdir(os.path.join(directory, 'fitX')):
         n_slice = get_number_of_particles(os.path.join(REAS_DIRECTORY,
                                                        'DAT' + file.split('.')[0].split('SIM')[1] + '.long'), XSLICE)
+        if n_slice == 0:
+            n_slice = 1
         with open(os.path.join(directory, 'fitX', file), 'r') as fX, \
                 open(os.path.join(directory, 'fitY', file), 'r') as fY:
             for lineX, lineY in zip(fX, fY):
@@ -138,11 +141,11 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
     X_max_tot.extend(X_max_x)
 
 x_plot = np.arange(500, 900, 1)
+axis = [ax1, ax2, ax3, ax4, ax5, ax6]
+plots = [A_x_tot, A_y_tot, b_x_tot, b_y_tot, c_x_tot, c_y_tot]
 
 # Calculate, fit and plot profiles
 bin_edges = np.arange(min(X_max_tot), max(X_max_tot) + 10, 10)
-axis = [ax1, ax2, ax3, ax4, ax5, ax6]
-plots = [A_x_tot, A_y_tot, b_x_tot, b_y_tot, c_x_tot, c_y_tot]
 
 for ind, plot in enumerate(plots):
     mean, std = make_profile(bin_edges, X_max_tot, plot)
@@ -163,10 +166,12 @@ ax6.plot(x_plot, arY[ANTENNA, 7] + arY[ANTENNA, 8] * x_plot + arY[ANTENNA, 9] * 
 # Fit the tot lists directly and plot them
 resX_A, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, A_x_tot)
 resX_b, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, b_x_tot)
-resX_c, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, c_x_tot)
+resX_c, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, c_x_tot,
+                      p0=[1e-3, 1e-5, 1e-10], sigma=np.array(c_x_tot)*0.1)
 resY_A, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, A_y_tot)
 resY_b, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, b_y_tot)
-resY_c, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, c_y_tot)
+resY_c, _ = curve_fit(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, X_max_tot, c_y_tot,
+                      p0=[1e-3, 1e-5, 1e-10], sigma=np.array(c_y_tot)*0.1)
 
 ax1.plot(x_plot, resX_A[0] + resX_A[1] * x_plot + resX_A[2] * x_plot ** 2, label='Fit to scatter')
 ax2.plot(x_plot, resY_A[0] + resY_A[1] * x_plot + resY_A[2] * x_plot ** 2, label='Fit to scatter')
