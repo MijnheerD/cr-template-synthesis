@@ -22,8 +22,8 @@ def get_number_of_particles(path):
         long = np.genfromtxt(path, skip_header=2, skip_footer=216, usecols=(2, 3))
         return np.sum(long, axis=1)
     elif type(path) == list:
-        res = np.array([np.sum(np.genfromtxt(file, skip_header=2, skip_footer=216, usecols=(2, 3)), axis=1)
-                        for file in path])
+        res = np.array([np.sum(np.genfromtxt(particle_file, skip_header=2, skip_footer=216, usecols=(2, 3)), axis=1)
+                        for particle_file in path])
         return res
 
 
@@ -79,7 +79,7 @@ for slice_nr in range(n_slice):
         with open(f'raw_{antenna_nr}x{int((slice_nr + 1) * 5)}.dat', 'r') as file:
             data = np.genfromtxt(file) * c_vacuum * 1e2
 
-        spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:]) # Normalisation must be consistent with IRFFT
+        spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:])  # Normalisation must be consistent with IRFFT
         amplitude = np.abs(spectrum)
         phase = np.angle(spectrum)
 
@@ -123,10 +123,10 @@ A_synth = np.apply_along_axis(lambda ar: ar * particles_target, 1, A_synth) * A_
 A_synth[np.isnan(A_synth)] = 0
 E_synth = A_synth * np.exp(Phi_res*1j)
 
-# Compare pulses in LOFAR frequency band 30-80MHz
+# Compare pulses in filtered frequency band 12-502MHz
 antenna = 2
-f_check_range = np.logical_and(30 * 1e6 <= freq[f_range], freq[f_range] <= 80 * 1e6)
-f_range = np.logical_and(30 * 1e6 <= freq, freq <= 80 * 1e6)
+# f_check_range = np.logical_and(30 * 1e6 <= freq[f_range], freq[f_range] <= 80 * 1e6)
+# f_range = np.logical_and(30 * 1e6 <= freq, freq <= 80 * 1e6)
 
 os.chdir(os.path.join(SIM_DIRECTORY, f'SIM{TARGET_NR}_coreas/'))
 data = np.zeros([2082, 3])
@@ -135,9 +135,9 @@ for file in glob.glob(f'raw_{antenna}x*'):
         data += (np.genfromtxt(f) * c_vacuum * 1e2)[:, 1:]
 spectrum = np.apply_along_axis(np.fft.rfft, 0, data)
 filtered = spectrum[f_range]
-signal = np.apply_along_axis(np.fft.irfft, 0, filtered)[:, :2]
+signal = np.apply_along_axis(np.fft.irfft, 0, filtered)[:, :n_pol]
 
-signal_synth = np.sum(np.apply_along_axis(np.fft.irfft, 0, E_synth[antenna, :, f_check_range, :]), axis=1)
+signal_synth = np.sum(np.apply_along_axis(np.fft.irfft, 0, E_synth[antenna, :, :, :]), axis=1)
 
 fig, [ax1, ax2] = plt.subplots(1, 2, figsize=(12, 6))
 
