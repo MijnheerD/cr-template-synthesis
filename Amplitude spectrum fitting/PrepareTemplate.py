@@ -7,7 +7,7 @@ from scipy.constants import c as c_vacuum
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
 PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramProfileFit50/'
 TEMPLATE_NR = '100052'
-TARGET_NR = '200013'
+TARGET_NR = '100013'
 
 
 def get_number_of_particles(path):
@@ -40,7 +40,7 @@ with open(os.path.join(SIM_DIRECTORY, 'SIM' + TEMPLATE_NR + '.reas'), 'r') as fi
             x_max = float(line.split()[2])
         elif 'PrimaryParticleEnergy' in line:
             primaryE = float(line.split()[2])
-x_max_vector = np.array([1, x_max, x_max**2])
+x_max_vector = np.array([1, x_max, x_max ** 2])
 
 # Target shower parameters
 particles_target = get_number_of_particles(os.path.join(SIM_DIRECTORY, f'DAT{TARGET_NR}.long'))
@@ -48,7 +48,7 @@ with open(os.path.join(SIM_DIRECTORY, 'SIM' + TARGET_NR + '.reas'), 'r') as file
     for line in file:
         if 'DepthOfShowerMaximum' in line:
             x_max = float(line.split()[2])
-x_max_vector_target = np.array([1, x_max, x_max**2])
+x_max_vector_target = np.array([1, x_max, x_max ** 2])
 
 # Find the frequency range in consideration, more specifically the number of frequencies and the number of polarizations
 with open(os.path.join(sim_dir, f'raw_0x5.dat'), 'r') as file:
@@ -121,7 +121,7 @@ Phi_res = Phi
 # Calculate the synthesized pulse
 A_synth = np.apply_along_axis(lambda ar: ar * particles_target, 1, A_synth) * A_res
 A_synth[np.isnan(A_synth)] = 0
-E_synth = A_synth * np.exp(Phi_res*1j)
+E_synth = A_synth * np.exp(Phi_res * 1j)
 
 # Compare pulses in filtered frequency band 12-502MHz
 antenna = 2
@@ -131,22 +131,29 @@ antenna = 2
 os.chdir(os.path.join(SIM_DIRECTORY, f'SIM{TARGET_NR}_coreas/'))
 data = np.zeros([2082, 3])
 for file in glob.glob(f'raw_{antenna}x*'):
-    with open(file, 'r') as f:
-        data += (np.genfromtxt(f) * c_vacuum * 1e2)[:, 1:]
+    data += (np.genfromtxt(file) * c_vacuum * 1e2)[:, 1:]
 spectrum = np.apply_along_axis(np.fft.rfft, 0, data)
-filtered = spectrum[f_range]
+filtered = np.apply_along_axis(lambda ar: ar * f_range, 0, spectrum)
 signal = np.apply_along_axis(np.fft.irfft, 0, filtered)[:, :n_pol]
 
-signal_synth = np.sum(np.apply_along_axis(np.fft.irfft, 0, E_synth[antenna, :, :, :]), axis=1)
+E_antenna = np.zeros((n_slice, spectrum.shape[0], n_pol)) + 1j * np.zeros((n_slice, spectrum.shape[0], n_pol))
+E_antenna[:, f_range, :] = E_synth[antenna, :, :, :]
+signal_synth = np.sum(np.apply_along_axis(np.fft.irfft, 1, E_antenna), axis=0)
 
-fig, [ax1, ax2] = plt.subplots(1, 2, figsize=(12, 6))
+time = np.genfromtxt(f'raw_{antenna}x5.dat', np.float32)[:, 0]
 
-ax1.plot(signal[:, 0], label='Real')
-ax1.plot(signal_synth[:, 0], label='Synthesized')
-ax1.legend()
+fig, ax = plt.subplots(1, 1, figsize=(6, 6))
 
-ax2.plot(signal[:, 1], label='Real')
-ax2.plot(signal_synth[:, 1], label='Synthesized')
-ax2.legend()
+ax.plot(time * 1e9, np.real(signal[:, 0]), c='k', linestyle='--')
+ax.plot(time * 1e9, np.real(signal_synth[:, 0]), c='maroon', linestyle='--')
+
+ax.plot(time * 1e9, np.real(signal[:, 1]), label='Real', c='k')
+ax.plot(time * 1e9, np.real(signal_synth[:, 1]), label='Synthesized', c='maroon')
+
+ax.set_xlim([0, 10])
+ax.set_title(r'$X_{max}^{Real}$ = ' + str(int(x_max_vector_target[1])) + r' $g/cm^2$ - '
+             r'$X_{max}^{Temp}$ = ' + str(int(x_max_vector[1])) + r' $g/cm^2$ - '
+             f'antenna = {antenna}')
+ax.legend()
 
 plt.show()
