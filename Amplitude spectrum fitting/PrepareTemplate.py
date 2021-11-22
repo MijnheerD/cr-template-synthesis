@@ -6,8 +6,8 @@ from scipy.constants import c as c_vacuum
 
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
 PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramProfileFit50/'
-TEMPLATE_NR = '100052'
-TARGET_NR = '100013'
+TEMPLATE_NR = '100001'
+TARGET_NR = '100000'
 
 
 def get_number_of_particles(path):
@@ -54,7 +54,7 @@ x_max_vector_target = np.array([1, x_max, x_max ** 2])
 with open(os.path.join(sim_dir, f'raw_0x5.dat'), 'r') as file:
     data = np.genfromtxt(file) * c_vacuum * 1e2
 freq = np.fft.rfftfreq(len(data), 2e-10)
-f_range = np.logical_and(12 * 1e6 <= freq, freq <= 502 * 1e6)
+f_range = freq <= 500 * 1e6
 n_freq = sum(f_range)
 n_pol = 2
 
@@ -106,54 +106,63 @@ for slice_nr in range(n_slice):
         c_synth[:, slice_nr, 0], c_synth[:, slice_nr, 1] = \
             np.matmul(p_c_x, x_max_vector_target), np.matmul(p_c_y, x_max_vector_target)
 
+# Calculate the array containing the d values
+distances = np.array([1, 4000, 7500, 11000, 15000, 37500])
+slices = np.array([(ind + 1) * 5 for ind in range(n_slice)])
+
+inner = 1e-9 * (slices[np.newaxis, :] / 400 - 1.5) * np.exp(1 - distances[:, np.newaxis] / 40000)
+d = np.maximum(inner, np.zeros(inner.shape)) ** 2
+
 # Calculate normalization factors, with frequency in MHz
 for i, f in enumerate(freq[f_range] / 1e6):
-    A_temp[:, :, i, :] = A0 * np.exp(b * f + c * f ** 2)  # have to add d to this
+    A_temp[:, :, i, :] = A0 * np.exp(b * f + c * f ** 2) + d[:, :, np.newaxis]
     A_synth[:, :, i, :] = A0_synth * np.exp(b_synth * f + c_synth * f ** 2)
 
-A_temp[np.where(A_temp <= 1e-10)] = 1  # Avoid division by 0, due to overflow in exp
-denominator = np.apply_along_axis(lambda ar: ar * particles_slice, 1, A_temp)
+# A_temp[np.where(A_temp <= 1e-9)] = 1
 
 # Normalized amplitude spectrum
-A_res = A / denominator
+A_res = A / np.apply_along_axis(lambda ar: ar * particles_slice, 1, A_temp)
 Phi_res = Phi
 
 # Calculate the synthesized pulse
 A_synth = np.apply_along_axis(lambda ar: ar * particles_target, 1, A_synth) * A_res
-A_synth[np.isnan(A_synth)] = 0
 E_synth = A_synth * np.exp(Phi_res * 1j)
 
 # Compare pulses in filtered frequency band 12-502MHz
-antenna = 2
-# f_check_range = np.logical_and(30 * 1e6 <= freq[f_range], freq[f_range] <= 80 * 1e6)
-# f_range = np.logical_and(30 * 1e6 <= freq, freq <= 80 * 1e6)
-
 os.chdir(os.path.join(SIM_DIRECTORY, f'SIM{TARGET_NR}_coreas/'))
-data = np.zeros([2082, 3])
-for file in glob.glob(f'raw_{antenna}x*'):
-    data += (np.genfromtxt(file) * c_vacuum * 1e2)[:, 1:]
-spectrum = np.apply_along_axis(np.fft.rfft, 0, data)
-filtered = np.apply_along_axis(lambda ar: ar * f_range, 0, spectrum)
-signal = np.apply_along_axis(np.fft.irfft, 0, filtered)[:, :n_pol]
 
-E_antenna = np.zeros((n_slice, spectrum.shape[0], n_pol)) + 1j * np.zeros((n_slice, spectrum.shape[0], n_pol))
-E_antenna[:, f_range, :] = E_synth[antenna, :, :, :]
-signal_synth = np.sum(np.apply_along_axis(np.fft.irfft, 1, E_antenna), axis=0)
+fig, ax = plt.subplots(2, 2, figsize=(15, 15))
+ax = ax.reshape((4,))
+ax_x_lim = [(0, 15), (0, 8), (2, 20), (20, 100)]
+ax_y_lim = [(-150, 500), (-250, 650), (-100, 400), (-7.5, 10)]
 
-time = np.genfromtxt(f'raw_{antenna}x5.dat', np.float32)[:, 0]
+for ind, antenna in enumerate((2, 1, 3, 5)):
+    data = np.zeros([2082, 3])
+    for file in glob.glob(f'raw_{antenna}*'):
+        data += (np.genfromtxt(file) * c_vacuum * 1e2)[:, 1:]
+    spectrum = np.apply_along_axis(np.fft.rfft, 0, data)
+    filtered = np.apply_along_axis(lambda ar: ar * f_range, 0, spectrum)
+    signal = np.apply_along_axis(np.fft.irfft, 0, filtered)[:, :n_pol]
 
-fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+    E_antenna = np.zeros((n_slice, spectrum.shape[0], n_pol)) + 1j * np.zeros((n_slice, spectrum.shape[0], n_pol))
+    E_antenna[:, f_range, :] = E_synth[antenna, :, :, :]
+    signal_synth = np.sum(np.apply_along_axis(np.fft.irfft, 1, E_antenna), axis=0)
 
-ax.plot(time * 1e9, np.real(signal[:, 0]), c='k', linestyle='--')
-ax.plot(time * 1e9, np.real(signal_synth[:, 0]), c='maroon', linestyle='--')
+    time = np.genfromtxt(f'raw_{antenna}x5.dat', np.float32)[:, 0]
 
-ax.plot(time * 1e9, np.real(signal[:, 1]), label='Real', c='k')
-ax.plot(time * 1e9, np.real(signal_synth[:, 1]), label='Synthesized', c='maroon')
+    ax[ind].plot(time * 1e9, np.real(signal[:, 0]), c='k', linestyle='--')
+    ax[ind].plot(time * 1e9, np.real(signal_synth[:, 0]), c='maroon', linestyle='--')
 
-ax.set_xlim([0, 10])
-ax.set_title(r'$X_{max}^{Real}$ = ' + str(int(x_max_vector_target[1])) + r' $g/cm^2$ - '
-             r'$X_{max}^{Temp}$ = ' + str(int(x_max_vector[1])) + r' $g/cm^2$ - '
-             f'antenna = {antenna}')
-ax.legend()
+    ax[ind].plot(time * 1e9, np.real(signal[:, 1]), label='Real', c='k')
+    ax[ind].plot(time * 1e9, np.real(signal_synth[:, 1]), label='Synthesized', c='maroon')
+
+    ax[ind].set_xlim(ax_x_lim[ind])
+    ax[ind].set_ylim(ax_y_lim[ind])
+    ax[ind].set_title(r'$X_{max}^{Real}$ = ' + str(int(x_max_vector_target[1])) + r' $g/cm^2$ - '
+                      r'$X_{max}^{Temp}$ = ' + str(int(x_max_vector[1])) + r' $g/cm^2$ - '
+                      f'antenna = {antenna}')
+    ax[ind].set_xlabel(r"t [ns]")
+    ax[ind].set_ylabel(r"E [$\mu$ V/m]")
+    ax[ind].legend()
 
 plt.show()
