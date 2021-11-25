@@ -27,6 +27,19 @@ def amplitude_fit_slice(fdata, ydata, x, r, f0=0):
     return popt, d**2
 
 
+def amplitude_fit_slice_iter(fdata, ydata, x, r, f0=0):
+    d = max(0, 1e-9 * (x / 400 - 1.5) * np.exp(1 - r / 40000))
+    popt, pcov = curve_fit(lambda f, a_0, b: a_0 * np.exp(b * (f - f0)), fdata / 1e6,
+                           ydata - d ** 2, p0=[ydata[0], -2.5e-3], bounds=(-np.inf, [np.inf, 1e-2]),
+                           sigma=np.maximum(ydata * 0.1, np.maximum(d ** 2, 1e-18)))
+
+    qopt, qcov = curve_fit(lambda f, c: popt[0] * np.exp(popt[1] * (f - f0) + c * (f - f0)**2),
+                           fdata / 1e6, ydata - d**2,
+                           p0 = [1e-6], sigma=np.maximum(ydata*0.1, np.maximum(d**2, 1e-18)))
+
+    return (*popt, *qopt), d**2
+
+
 distances = [1, 4000, 7500, 11000, 15000, 37500]
 files_path = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
 david_path = '/mnt/hgfs/Shared data/ampfitQ/'
@@ -44,31 +57,14 @@ Nslice = get_number_of_particles(files_path+'DAT' + sim + '.long', Xslice)
 spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:], norm='forward')
 amplitude = np.abs(spectrum) * 2  # Need to multiply by 2 because 1-sided FT
 filtered = amplitude[frange]
-'''
-plt.plot(freq[frange]/1e6, filtered[:, 0], label='x-component (CE)')
-plt.plot(freq[frange]/1e6, filtered[:, 1], label='y-component (Geo)')
-#plt.ylim([0, 8.5])
-plt.xlabel('f [MHz]')
-plt.ylabel(r'A [\mu V / m]$')
-plt.title(f'r = {distances[antenna_nr]/100}m, Xslice = {Xslice} g/cm^2')
-plt.legend()
-plt.show()
-'''
-coefX, dX = amplitude_fit_slice(freq[frange],  filtered[:, 0], Xslice, distances[antenna], f0=250)
-coefY, dY = amplitude_fit_slice(freq[frange],  filtered[:, 1], Xslice, distances[antenna], f0=250)
 
-# coef0X, d0X = amplitude_fit_slice(freq[frange]-2.5*1e8, ampXfiltered, Xslice, distances[antenna_nr])
-# coef0Y, d0Y = amplitude_fit_slice(freq[frange]-2.5*1e8, ampYfiltered, Xslice, distances[antenna_nr])
+coefX, dX = amplitude_fit_slice_iter(freq[frange],  filtered[:, 0], Xslice, distances[antenna], f0=250)
+coefY, dY = amplitude_fit_slice_iter(freq[frange],  filtered[:, 1], Xslice, distances[antenna], f0=250)
+
 
 print('The x component has parameters', *coefX)
 print('The y component has parameters', *coefY)
-''' 
-david_data = np.genfromtxt(david_path + sim + 'ampfit_Q.txt')
-david_data = david_data.reshape((207, 6, 2, 3))
 
-print('David x component has parameters', *david_data[int(Xslice/5 - 1), antenna_nr, 0, :])
-print('David y component has parameters', *david_data[int(Xslice/5 - 1), antenna_nr, 1, :])
-'''
 fig = plt.figure()
 
 ax = fig.add_subplot(121)

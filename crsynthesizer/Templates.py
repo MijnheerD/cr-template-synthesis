@@ -57,8 +57,8 @@ class TemplatesLibraryAnalyzer(object):
         for x_slice in slice_range:
             for antenna in antenna_range:
                 d = max(0, 1e-9 * (x_slice / 400 - 1.5) * np.exp(1 - self.library.distances[antenna] / 40000))
-                amp_fitters = [AmplitudeFitter(shower.get_sa_trace(x_slice, antenna), amp_fit_range, d ** 2,
-                                               amp_fit_center)
+                amp_fitters = [AmplitudeFitter(shower.get_sa_trace(x_slice, antenna), amp_fit_range,
+                                               d ** 2, amp_fit_center)
                                for shower in self.library.showers]
                 param_fitter = ParameterFitter(np.array([fitter.opt for fitter in amp_fitters]),
                                                np.array([fitter.cov for fitter in amp_fitters]),
