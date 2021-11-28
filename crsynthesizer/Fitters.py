@@ -30,9 +30,9 @@ class Fitter(object):
         self.cov = np.array(self.cov).T
 
     def fit_multi(self, x_data, y_data):
-        assert type(self.fit_fun)==list, "Fit function is not a list"
+        assert type(self.fit_fun) == list, "Fit function is not a list"
 
-        assert len(self.fit_fun)==y_data.shape[1], "Not enough fit functions to cover all polarizations"
+        assert len(self.fit_fun) == y_data.shape[1], "Not enough fit functions to cover all polarizations"
 
         for ind in range(len(self.fit_fun)):
             res = curve_fit(self.fit_fun[ind], x_data, y_data[:, ind],
@@ -48,6 +48,7 @@ class AmplitudeFitter(Fitter):
     This object fits the amplitude in a given frequency range. The first dimension of the trace argument is taken to be
     the time axis and the second dimension should correspond to the different polarizations.
     """
+
     def __init__(self, trace: np.array, fit_range: tuple, d=0, f0=0):
         super().__init__(lambda f, a_0, b, c: a_0 * np.exp(b * (f - f0) + c * (f - f0) ** 2) + d)
 
@@ -116,6 +117,7 @@ class ParameterFitter(Fitter):
     This object fits parameters with a quadratic function, using the first dimension as the observations and second
     dimension as the list of parameters. Each parameter is fitted using the same list of x-values.
     """
+
     def __init__(self, params, std_params, x_values):
         super().__init__(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2)
         self.p0 = [1, 1, 1]

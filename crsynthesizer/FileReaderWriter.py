@@ -56,6 +56,7 @@ class ShowerDataC7(object):
     def __init__(self, sim_directory):
         self.name = os.path.basename(os.path.normpath(sim_directory)).split('_')[0]
         self.number = int(self.name[3:])
+        print(f"I am shower {self.number}")
 
         self.particle_numbers = None
         self.atm_slices = None
@@ -68,8 +69,11 @@ class ShowerDataC7(object):
         self.traces = None
 
         with working_directory(sim_directory):
+            print("...reading long...")
             self.read_long()
+            print("...reading REAS...")
             self.read_reas()
+            print("...reading traces...")
             self.read_time_traces()
 
     def read_long(self):
@@ -98,7 +102,7 @@ class ShowerDataC7(object):
         from scipy.constants import c as c_vacuum
 
         bins_file = f'../SIM{self.number}_coreas.bins'
-        signal_files = os.listdir('../Template library processing')
+        signal_files = os.listdir('.')
 
         nr_of_antennas = len(np.unique(np.genfromtxt(bins_file)[:, 1]))
         nr_of_slices = int(len(signal_files)/nr_of_antennas)
