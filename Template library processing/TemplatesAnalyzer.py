@@ -26,6 +26,19 @@ def amplitude_fit_slice(fdata, ydata, x, r, f0=0):
     return popt, d ** 2, linear
 
 
+def amplitude_fit_slice_iter(fdata, ydata, x, r, f0=0):
+    d = max(0, 1e-9 * (x / 400 - 1.5) * np.exp(1 - r / 40000))
+    popt, pcov = curve_fit(lambda f, a_0, b, c: a_0 * np.exp(b * (f - f0) + c * (f - f0) ** 2), fdata / 1e6,
+                           ydata - d ** 2, p0=[ydata[0], -1e-3, -2e-6], bounds=(-np.inf, [np.inf, 1e-2, 1e-3]),
+                           sigma=np.maximum(ydata * 0.1, np.maximum(d ** 2, 1e-18)))
+
+    qopt, qcov = curve_fit(lambda f, b, c: popt[0] * np.exp(b * (f - f0) + c * (f - f0) ** 2),
+                           fdata / 1e6, ydata - d ** 2, bounds=(-np.inf, [1e-2, 1e-3]),
+                           p0=[popt[1], popt[2]], sigma=np.maximum(ydata * 0.1, np.maximum(d ** 2, 1e-18)))
+
+    return (popt[0], *qopt), d**2
+
+
 def fit_parameters(fitfun, x_data: list, y_data: list, return_cov=False):
     """
     Fits multiple parameters to the same fit function. Pass all the data for each parameter as an entry in y_data.
@@ -152,19 +165,19 @@ class TemplatesAnalyzer(object):
             amplitude = np.apply_along_axis(np.abs, 0, spectrum) * 2
             filtered = amplitude[frange]
 
-            # Fit the amplitude spectrum, report if linear fit is used
-            coefX, dX, linear = amplitude_fit_slice(freq[frange], filtered[:, 0], Xslice, self.distances[antenna],
-                                                    f0=self.fit_center)
-            if linear:
-                with open(self.log_file, 'a+') as f:
-                    f.write(os.path.join(path_to_file, filename))
-                    f.write(" used linear fit for X\n")
-            coefY, dY, linear = amplitude_fit_slice(freq[frange], filtered[:, 1], Xslice, self.distances[antenna],
-                                                    f0=self.fit_center)
-            if linear:
-                with open(self.log_file, 'a+') as f:
-                    f.write(os.path.join(path_to_file, filename))
-                    f.write(" used linear fit for Y\n")
+            # Fit the amplitude spectrum (report if linear fit is used)
+            coefX, dX = amplitude_fit_slice_iter(freq[frange], filtered[:, 0], Xslice, self.distances[antenna],
+                                                 f0=self.fit_center)
+            # if linear:
+            #     with open(self.log_file, 'a+') as f:
+            #         f.write(os.path.join(path_to_file, filename))
+            #         f.write(" used linear fit for X\n")
+            coefY, dY = amplitude_fit_slice_iter(freq[frange], filtered[:, 1], Xslice, self.distances[antenna],
+                                                 f0=self.fit_center)
+            # if linear:
+            #     with open(self.log_file, 'a+') as f:
+            #         f.write(os.path.join(path_to_file, filename))
+            #         f.write(" used linear fit for Y\n")
 
         return [[Xslice, antenna, *coefX], [Xslice, antenna, *coefY]]
 
