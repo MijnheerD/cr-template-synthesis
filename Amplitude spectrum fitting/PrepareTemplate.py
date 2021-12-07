@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.constants import c as c_vacuum
 
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
-PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramProfileFit50/'
+PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramProfileFitNew50/'
 TEMPLATE_NR = '100001'
 TARGET_NR = '100000'
 
@@ -29,8 +29,8 @@ def get_number_of_particles(path):
 
 # Infer the number of slices and number of antennas present in the template simulation
 sim_dir = os.path.join(SIM_DIRECTORY, f'SIM{TEMPLATE_NR}_coreas/')
-particles_slice = get_number_of_particles(os.path.join(SIM_DIRECTORY, f'DAT{TEMPLATE_NR}.long'))
-n_slice = particles_slice.shape[-1]
+particles_temp = get_number_of_particles(os.path.join(SIM_DIRECTORY, f'DAT{TEMPLATE_NR}.long'))
+n_slice = particles_temp.shape[-1]
 n_antenna = int(len(os.listdir(sim_dir)) / n_slice)
 
 # Get the Xmax of the simulation and construct the vector for matrix multiplication
@@ -54,8 +54,9 @@ x_max_vector_target = np.array([1, x_max, x_max ** 2])
 with open(os.path.join(sim_dir, f'raw_0x5.dat'), 'r') as file:
     data = np.genfromtxt(file) * c_vacuum * 1e2
 freq = np.fft.rfftfreq(len(data), 2e-10)
-f_range = freq <= 500 * 1e6
+f_range = freq < 502 * 1e6
 n_freq = sum(f_range)
+n_time = len(data)
 n_pol = 2
 
 # Prepare all the Numpy arrays
@@ -68,9 +69,11 @@ A0 = np.zeros((n_antenna, n_slice, n_pol))
 b = np.zeros((n_antenna, n_slice, n_pol))
 c = np.zeros((n_antenna, n_slice, n_pol))
 
-A0_synth = np.zeros((n_antenna, n_slice, n_pol))
-b_synth = np.zeros((n_antenna, n_slice, n_pol))
-c_synth = np.zeros((n_antenna, n_slice, n_pol))
+A0_target = np.zeros((n_antenna, n_slice, n_pol))
+b_target = np.zeros((n_antenna, n_slice, n_pol))
+c_target = np.zeros((n_antenna, n_slice, n_pol))
+
+E_scale = np.zeros((n_antenna, n_slice, n_time, n_pol))
 
 # Analyze all the files of the template shower
 os.chdir(sim_dir)
@@ -86,6 +89,9 @@ for slice_nr in range(n_slice):
         A[antenna_nr, slice_nr, :, :] = amplitude[f_range][:, :n_pol]
         Phi[antenna_nr, slice_nr, :, :] = phase[f_range][:, :n_pol]
 
+        E_scale[antenna_nr, slice_nr, :, :] = np.apply_along_axis(np.fft.irfft, 0,
+                                                                  spectrum * f_range[:, np.newaxis])[:, :n_pol]
+
     with open(os.path.join(PARAM_DIRECTORY, 'fitX', f'slice{int((slice_nr + 1) * 5)}.dat'), 'r') as fileX, \
             open(os.path.join(PARAM_DIRECTORY, 'fitY', f'slice{int((slice_nr + 1) * 5)}.dat'), 'r') as fileY:
         dataX = np.genfromtxt(fileX)
@@ -99,11 +105,11 @@ for slice_nr in range(n_slice):
         b[:, slice_nr, 0], b[:, slice_nr, 1] = np.matmul(p_b_x, x_max_vector), np.matmul(p_b_y, x_max_vector)
         c[:, slice_nr, 0], c[:, slice_nr, 1] = np.matmul(p_c_x, x_max_vector), np.matmul(p_c_y, x_max_vector)
 
-        A0_synth[:, slice_nr, 0], A0_synth[:, slice_nr, 1] = \
+        A0_target[:, slice_nr, 0], A0_target[:, slice_nr, 1] = \
             np.matmul(p_A0_x, x_max_vector_target), np.matmul(p_A0_y, x_max_vector_target)
-        b_synth[:, slice_nr, 0], b_synth[:, slice_nr, 1] = \
+        b_target[:, slice_nr, 0], b_target[:, slice_nr, 1] = \
             np.matmul(p_b_x, x_max_vector_target), np.matmul(p_b_y, x_max_vector_target)
-        c_synth[:, slice_nr, 0], c_synth[:, slice_nr, 1] = \
+        c_target[:, slice_nr, 0], c_target[:, slice_nr, 1] = \
             np.matmul(p_c_x, x_max_vector_target), np.matmul(p_c_y, x_max_vector_target)
 
 # Calculate the array containing the d values
@@ -116,17 +122,19 @@ d = np.maximum(inner, np.zeros(inner.shape)) ** 2
 # Calculate normalization factors, with frequency in MHz
 for i, f in enumerate(freq[f_range] / 1e6):
     A_temp[:, :, i, :] = A0 * np.exp(b * f + c * f ** 2) + d[:, :, np.newaxis]
-    A_synth[:, :, i, :] = A0_synth * np.exp(b_synth * f + c_synth * f ** 2)
-
-# A_temp[np.where(A_temp <= 1e-9)] = 1
+    A_synth[:, :, i, :] = A0_target * np.exp(b_target * f + c_target * f ** 2)
 
 # Normalized amplitude spectrum
-A_res = A / np.apply_along_axis(lambda ar: ar * particles_slice, 1, A_temp)
+A_res = A / np.apply_along_axis(lambda ar: ar * particles_temp, 1, A_temp)
 Phi_res = Phi
 
 # Calculate the synthesized pulse
-A_synth = np.apply_along_axis(lambda ar: ar * particles_target, 1, A_synth) * A_res
+A_synth = np.apply_along_axis(lambda ar: ar * particles_target, 1, A_synth * A_res)
 E_synth = A_synth * np.exp(Phi_res * 1j)
+
+# Calculate the synthesized pulse with simple scaling relation
+E_scale = np.apply_along_axis(lambda ar: ar * particles_target / particles_temp, 1, E_scale)
+E_scale = np.sum(E_scale, axis=1)
 
 # Compare pulses in filtered frequency band 12-502MHz
 os.chdir(os.path.join(SIM_DIRECTORY, f'SIM{TARGET_NR}_coreas/'))
@@ -148,13 +156,17 @@ for ind, antenna in enumerate((2, 1, 3, 5)):
     E_antenna[:, f_range, :] = E_synth[antenna, :, :, :]
     signal_synth = np.sum(np.apply_along_axis(np.fft.irfft, 1, E_antenna), axis=0)
 
+    signal_scale = E_scale[antenna, :, :]
+
     time = np.genfromtxt(f'raw_{antenna}x5.dat', np.float32)[:, 0]
 
     ax[ind].plot(time * 1e9, np.real(signal[:, 0]), c='k', linestyle='--')
     ax[ind].plot(time * 1e9, np.real(signal_synth[:, 0]), c='maroon', linestyle='--')
+    ax[ind].plot(time * 1e9, np.real(signal_scale[:, 0]), c='green', linestyle='--')
 
     ax[ind].plot(time * 1e9, np.real(signal[:, 1]), label='Real', c='k')
     ax[ind].plot(time * 1e9, np.real(signal_synth[:, 1]), label='Synthesized', c='maroon')
+    ax[ind].plot(time * 1e9, np.real(signal_scale[:, 1]), label='Scaled model', c='green')
 
     ax[ind].set_xlim(ax_x_lim[ind])
     ax[ind].set_ylim(ax_y_lim[ind])
