@@ -11,24 +11,25 @@ def get_number_of_particles(path):
 
 
 def make_profile(bins, x_data, y_data):
-    mean = binned_statistic(x_data, y_data, statistic='mean', bins=len(bins) - 1, range=(min(bins), max(bins)))
-    std = binned_statistic(x_data, y_data, statistic='std', bins=len(bins) - 1, range=(min(bins), max(bins)))
-    return mean[0], std[0]
+    x, y = list(zip(*[tup for tup in zip(x_data, y_data) if tup[1] is not np.nan]))
+    m = binned_statistic(x, y, statistic='mean', bins=bins)
+    s = binned_statistic(x, y, statistic='std', bins=bins)
+    return m[0], np.nan_to_num(s[0])
 
 
-def fit_profile(fitfun, bins, mean, std):
+def fit_profile(fit_fun, bins, means, stds):
     bin_centers = (bins[1:] + bins[:-1]) / 2
-    to_fit = list(zip(*[(bin_centers[i], mean[i], std[i]) for i in range(len(bin_centers)) if std[i] != 0]))
-    popt, pcov = curve_fit(fitfun, to_fit[0], to_fit[1],
-                           p0=[np.median(to_fit[1]), 1e-4, 1e-8], sigma=to_fit[2],
-                           maxfev=20000)
+    to_fit = list(zip(*[(bin_centers[i], means[i], stds[i]) for i in range(len(bin_centers)) if stds[i] != 0]))
+    popt, pcov = curve_fit(fit_fun, to_fit[0], to_fit[1],
+                           p0=[np.median(to_fit[1]), 1e-4, -1e-6], maxfev=20000,
+                           sigma=np.clip(to_fit[2], np.percentile(to_fit[2], 3), None))
     return popt, pcov
 
 
 FIT_DIRECTORIES = ['fitFiles5017', 'fitFiles5018', 'fitFiles5019']
 COLORS = ['cyan', 'magenta', 'yellow']
 REAS_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/CORSIKA_long_files'
-PARAM_DIRECTORY = 'paramProfileFit50'
+PARAM_DIRECTORY = 'paramProfileFitNew50'
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]
 
 # Open all simulation files, grouped per polarization
@@ -60,7 +61,8 @@ for ind, (fileX, fileY) in enumerate(zip(handler.filesX, handler.filesY)):
     arY.sort(axis=0, order=['antenna', 'slice'])
 
     particle_numbers = get_number_of_particles(os.path.join(REAS_DIRECTORY, 'DAT' + name[3:] + '.long'))
-    particle_numbers[np.where(particle_numbers == 0)] = 1
+    particle_accepted = particle_numbers >= 1e-6 * np.max(particle_numbers)
+    # particle_numbers[np.where(particle_numbers == 0)] = 1
 
     nr_of_slices = len(particle_numbers)
     nr_of_antennas = int(len(arX) / nr_of_slices)
@@ -72,14 +74,14 @@ for ind, (fileX, fileY) in enumerate(zip(handler.filesX, handler.filesY)):
         sliceX = arX[int(antenna * nr_of_slices):int((antenna + 1) * nr_of_slices)]
         sliceY = arY[int(antenna * nr_of_slices):int((antenna + 1) * nr_of_slices)]
 
-        A_x[:, antenna, ind] = sliceX['A'] / particle_numbers
-        A_y[:, antenna, ind] = sliceY['A'] / particle_numbers
+        A_x[:, antenna, ind] = np.where(particle_accepted, sliceX['A'] / particle_numbers, [None] * A_x.shape[0])
+        A_y[:, antenna, ind] = np.where(particle_accepted, sliceY['A'] / particle_numbers, [None] * A_y.shape[0])
 
-        b_x[:, antenna, ind] = sliceX['b']
-        b_y[:, antenna, ind] = sliceY['b']
+        b_x[:, antenna, ind] = np.where(particle_accepted, sliceX['b'], [None] * b_x.shape[0])
+        b_y[:, antenna, ind] = np.where(particle_accepted, sliceY['b'], [None] * b_y.shape[0])
 
-        c_x[:, antenna, ind] = sliceX['c']
-        c_y[:, antenna, ind] = sliceY['c']
+        c_x[:, antenna, ind] = np.where(particle_accepted, sliceX['c'], [None] * c_x.shape[0])
+        c_y[:, antenna, ind] = np.where(particle_accepted, sliceY['c'], [None] * c_y.shape[0])
 
 # Go over all (slice, antenna) pairs and fit them per polarization
 paramX = [A_x, b_x, c_x]
@@ -91,13 +93,22 @@ for x_slice in range(A_x.shape[0]):
     for antenna in range(A_x.shape[1]):
         fitX = []
         fitY = []
-        for pX, pY in zip(paramX, paramY):
+        for ind, (pX, pY) in enumerate(zip(paramX, paramY)):
             mean, std = make_profile(bin_edges, X_max_tot, pX[x_slice, antenna, :])
+            # For the A_0 parameter, we want to replace empty bins with 0. For b and c, empty bins are discarded.
+            if ind == 0:
+                to_replace = np.isnan(mean)
+                mean[to_replace] = 0
+                std[to_replace] = np.mean(std[np.nonzero(std)])
             fit_params, _ = fit_profile(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2,
                                         bin_edges, mean, std)
             fitX.append(fit_params)
 
             mean, std = make_profile(bin_edges, X_max_tot, pY[x_slice, antenna, :])
+            if ind == 0:
+                to_replace = np.isnan(mean)
+                mean[to_replace] = 0
+                std[to_replace] = np.mean(std[np.nonzero(std)])
             fit_params, _ = fit_profile(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2,
                                         bin_edges, mean, std)
             fitY.append(fit_params)
