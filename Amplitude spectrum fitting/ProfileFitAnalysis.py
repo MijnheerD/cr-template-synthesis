@@ -62,7 +62,6 @@ for ind, (fileX, fileY) in enumerate(zip(handler.filesX, handler.filesY)):
 
     particle_numbers = get_number_of_particles(os.path.join(REAS_DIRECTORY, 'DAT' + name[3:] + '.long'))
     particle_accepted = particle_numbers >= 1e-6 * np.max(particle_numbers)
-    # particle_numbers[np.where(particle_numbers == 0)] = 1
 
     nr_of_slices = len(particle_numbers)
     nr_of_antennas = int(len(arX) / nr_of_slices)
@@ -87,7 +86,7 @@ for ind, (fileX, fileY) in enumerate(zip(handler.filesX, handler.filesY)):
 paramX = [A_x, b_x, c_x]
 paramY = [A_y, b_y, c_y]
 
-bin_edges = np.arange(min(X_max_tot), max(X_max_tot) + 10, 10)
+bin_edges = np.concatenate((np.arange(np.floor(min(X_max_tot)), 900, 10), [900, 915, 975]))
 
 for x_slice in range(A_x.shape[0]):
     for antenna in range(A_x.shape[1]):

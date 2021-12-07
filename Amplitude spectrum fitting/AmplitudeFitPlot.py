@@ -12,8 +12,8 @@ def get_number_of_particles(path):
 
 
 def make_profile(bins, x_data, y_data):
-    mean = binned_statistic(x_data, y_data, statistic='mean', bins=len(bins) - 1, range=(min(bins), max(bins)))
-    std = binned_statistic(x_data, y_data, statistic='std', bins=len(bins) - 1, range=(min(bins), max(bins)))
+    mean = binned_statistic(x_data, y_data, statistic='mean', bins=bins)
+    std = binned_statistic(x_data, y_data, statistic='std', bins=bins)
     return mean[0], std[0]
 
 
@@ -34,7 +34,7 @@ def plot_fit_profile(ax, x_plot, param, bins, mean, std, bar=False):
 
 
 FIT_DIRECTORIES = ['fitFiles5017', 'fitFiles5018', 'fitFiles5019']
-FIT_TYPES = {'file', 'curve_fit', 'polynomial_fit'}
+FIT_TYPES = {'file', 'profile', 'curve_fit', 'polynomial_fit'}
 COLORS = ['cyan', 'magenta', 'yellow']
 REAS_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/CORSIKA_long_files'
 PARAM_DIRECTORY = 'paramProfileFitNew50'
@@ -43,7 +43,7 @@ DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna_nr radial distances 
 # if __name__ == "__main__":
 #     XSLICE = int(sys.argv[1])
 #     ANTENNA = int(sys.argv[2])
-XSLICE = 600
+XSLICE = 1020
 ANTENNA = 2
 
 arX = np.genfromtxt(os.path.join(PARAM_DIRECTORY, 'fitX', 'slice' + str(XSLICE) + '.dat'))
@@ -161,7 +161,7 @@ plots = [A_x_tot, A_y_tot, b_x_tot, b_y_tot, c_x_tot, c_y_tot]
 
 # Calculate, fit and plot profiles
 if 'profile' in FIT_TYPES:
-    bin_edges = np.arange(min(X_max_tot), max(X_max_tot) + 10, 10)
+    bin_edges = np.concatenate((np.arange(np.floor(min(X_max_tot)), 900, 10), [900, 915, 975]))
 
     for ind, plot in enumerate(plots):
         mean, std = make_profile(bin_edges, X_max_tot, plot)
