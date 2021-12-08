@@ -64,6 +64,21 @@ def fit_parameters(fitfun, x_data: list, y_data: list, return_cov=False):
     return fits
 
 
+def polyfit_parameters(rank, x_data: list, y_data: list):
+    fits = []
+
+    # If y_data does not containing multiple parameters to fit
+    if not (isinstance(y_data[0], list) or isinstance(y_data[0], np.ndarray)):
+        y_data = [y_data]
+
+    # Fit every parameter present in y_data
+    for y in y_data:
+        res = np.polynomial.polynomial.polyfit(x_data, y, rank)
+        fits.append(res)
+
+    return fits
+
+
 def open_all_files(path):
     """
     Open all files in a directory.
@@ -297,8 +312,8 @@ class TemplatesAnalyzer(object):
             # Perform a quadratic fit to every parameter (for current combination of slice and antenna)
             a_0_x, a_0_y = np.array(a_0_x), np.array(a_0_y)
             res_x_a, res_x_b, res_x_c, res_y_a, res_y_b, res_y_c = \
-                fit_parameters(lambda x, p0, p1, p2: p0 + p1 * x + p2 * x ** 2, x_max,
-                               [a_0_x / n_slice, b_x, c_x, a_0_y / n_slice, b_y, c_y])
+                polyfit_parameters(2, x_max,
+                                   [a_0_x / n_slice, b_x, c_x, a_0_y / n_slice, b_y, c_y])
 
             # Save fitted parameters to file corresponding to current slice
             self._save_antenna_to_slice_file(lst_x[1], [res_x_a, res_x_b, res_x_c],
