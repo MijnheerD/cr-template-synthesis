@@ -136,15 +136,24 @@ E_synth = A_synth * np.exp(Phi_res * 1j)
 E_scale = np.apply_along_axis(lambda ar: ar * particles_target / particles_temp, 1, E_scale)
 E_scale = np.sum(E_scale, axis=1)
 
-# Compare pulses in filtered frequency band 12-502MHz
+# Compare pulses in filtered frequency band 0-502MHz
 os.chdir(os.path.join(SIM_DIRECTORY, f'SIM{TARGET_NR}_coreas/'))
 
 fig, ax = plt.subplots(2, 2, figsize=(15, 15))
 ax = ax.reshape((4,))
-ax_x_lim = [(0, 15), (0, 8), (2, 20), (20, 100)]
-ax_y_lim = [(-150, 500), (-250, 650), (-100, 400), (-7.5, 10)]
+ax_x_lim = [(0, 8), (2, 20), (20, 100)]
+ax_y_lim = [(-250, 650), (-100, 400), (-7.5, 10)]
 
-for ind, antenna in enumerate((2, 1, 3, 5)):
+# Plot longitudinal profile
+ax[0].plot(slices, particles_temp, c='purple', label='Template')
+ax[0].plot(slices, particles_target, c='k', label='Real')
+ax[0].set_xlabel(r"$X [g/cm^2]$")
+ax[0].set_ylabel(r"$N(X)$")
+ax[0].set_title(r'$X_{max}^{Real}$ = ' + str(int(x_max_vector_target[1])) + r' $g/cm^2$ - '
+                r'$X_{max}^{Temp}$ = ' + str(int(x_max_vector[1])) + r' $g/cm^2$')
+ax[0].legend()
+
+for ind, antenna in enumerate((1, 3, 5)):
     data = np.zeros([2082, 3])
     for file in glob.glob(f'raw_{antenna}*'):
         data += (np.genfromtxt(file) * c_vacuum * 1e2)[:, 1:]
@@ -160,21 +169,21 @@ for ind, antenna in enumerate((2, 1, 3, 5)):
 
     time = np.genfromtxt(f'raw_{antenna}x5.dat', np.float32)[:, 0]
 
-    ax[ind].plot(time * 1e9, np.real(signal[:, 0]), c='k', linestyle='--')
-    ax[ind].plot(time * 1e9, np.real(signal_synth[:, 0]), c='maroon', linestyle='--')
-    ax[ind].plot(time * 1e9, np.real(signal_scale[:, 0]), c='green', linestyle='--')
+    ax[ind+1].plot(time * 1e9, np.real(signal[:, 0]), c='k', linestyle='--')
+    ax[ind+1].plot(time * 1e9, np.real(signal_synth[:, 0]), c='maroon', linestyle='--')
+    ax[ind+1].plot(time * 1e9, np.real(signal_scale[:, 0]), c='green', linestyle='--')
 
-    ax[ind].plot(time * 1e9, np.real(signal[:, 1]), label='Real', c='k')
-    ax[ind].plot(time * 1e9, np.real(signal_synth[:, 1]), label='Synthesized', c='maroon')
-    ax[ind].plot(time * 1e9, np.real(signal_scale[:, 1]), label='Scaled model', c='green')
+    ax[ind+1].plot(time * 1e9, np.real(signal[:, 1]), label='Real', c='k')
+    ax[ind+1].plot(time * 1e9, np.real(signal_synth[:, 1]), label='Synthesized', c='maroon')
+    ax[ind+1].plot(time * 1e9, np.real(signal_scale[:, 1]), label='Scaled model', c='green')
 
-    ax[ind].set_xlim(ax_x_lim[ind])
-    ax[ind].set_ylim(ax_y_lim[ind])
-    ax[ind].set_title(r'$X_{max}^{Real}$ = ' + str(int(x_max_vector_target[1])) + r' $g/cm^2$ - '
-                      r'$X_{max}^{Temp}$ = ' + str(int(x_max_vector[1])) + r' $g/cm^2$ - '
-                      f'antenna = {antenna}')
-    ax[ind].set_xlabel(r"t [ns]")
-    ax[ind].set_ylabel(r"E [$\mu$ V/m]")
-    ax[ind].legend()
+    ax[ind+1].set_xlim(ax_x_lim[ind])
+    ax[ind+1].set_ylim(ax_y_lim[ind])
+    ax[ind+1].set_title(r'$X_{max}^{Real}$ = ' + str(int(x_max_vector_target[1])) + r' $g/cm^2$ - '
+                        r'$X_{max}^{Temp}$ = ' + str(int(x_max_vector[1])) + r' $g/cm^2$ - '
+                        f'r = {int(distances[antenna] / 100)} m')
+    ax[ind+1].set_xlabel(r"t [ns]")
+    ax[ind+1].set_ylabel(r"E [$\mu$ V/m]")
+    ax[ind+1].legend()
 
 plt.show()
