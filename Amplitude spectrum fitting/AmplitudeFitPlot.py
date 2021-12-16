@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import binned_statistic
 from scipy.optimize import curve_fit
+from scipy.constants import c
 
 
 def get_number_of_particles(path):
@@ -33,18 +34,21 @@ def plot_fit_profile(ax, x_plot, param, bins, mean, std, bar=False):
         ax.bar(bins[:-1], mean, align='edge', width=width, color='w', alpha=0.3, yerr=std, ecolor='w')
 
 
-FIT_DIRECTORIES = ['fitFiles5017', 'fitFiles5018', 'fitFiles5019']
-FIT_TYPES = {'file', 'profile', 'curve_fit', 'polynomial_fit'}
+FIT_DIRECTORIES = ['fitFilesUB17', 'fitFilesUB18', 'fitFilesUB19']
+FIT_TYPES = {'profile', 'polynomial_fit'}
+PLOT_TYPES = {'fit', 'david'}
 COLORS = ['cyan', 'magenta', 'yellow']
+COLORS_DAVID = ['green', 'red', 'orange']
 REAS_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/CORSIKA_long_files'
-PARAM_DIRECTORY = 'paramProfileFitNew50'
+DAVID_DIRECTORY = '/mnt/hgfs/Shared data/ampfitQ/'
+PARAM_DIRECTORY = 'paramProfileFitUB'
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna_nr radial distances to shower core, in cm
 
 # if __name__ == "__main__":
 #     XSLICE = int(sys.argv[1])
 #     ANTENNA = int(sys.argv[2])
-XSLICE = 1020
-ANTENNA = 2
+XSLICE = 900
+ANTENNA = 3
 
 arX = np.genfromtxt(os.path.join(PARAM_DIRECTORY, 'fitX', 'slice' + str(XSLICE) + '.dat'))
 arY = np.genfromtxt(os.path.join(PARAM_DIRECTORY, 'fitY', 'slice' + str(XSLICE) + '.dat'))
@@ -59,6 +63,9 @@ A_x_tot, A_y_tot = [], []
 b_x_tot, b_y_tot = [], []
 c_x_tot, c_y_tot = [], []
 X_max_tot = []
+
+iron_index = []
+X_max_dict = {}
 
 for ind, directory in enumerate(FIT_DIRECTORIES):
     A_0_x = []
@@ -78,6 +85,7 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
         if name.startswith('2') and proton:
             proton = False
             iron_ind += i
+            iron_index.append(iron_ind)
         n_slice = get_number_of_particles(os.path.join(REAS_DIRECTORY,
                                                        'DAT' + file.split('.')[0].split('SIM')[1] + '.long'))
         if n_slice[int(XSLICE / 5 - 1)] < 1e-6 * max(n_slice):
@@ -90,15 +98,17 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
                 lstY = lineY.split(', ')
                 if float(lstX[0]) == XSLICE:
                     if float(lstX[1]) == ANTENNA:
-                        A_0_x.append(float(lstX[2]) / n_slice[int(XSLICE / 5 - 1)])
+                        A_0_x.append(np.sqrt(float(lstX[2]) / n_slice[int(XSLICE / 5 - 1)] / c / 1e2))
                         b_x.append(float(lstX[3]))
                         c_x.append(float(lstX[4]))
                         X_max_x.append(float(lstX[5]))
-                        A_0_y.append(float(lstY[2]) / n_slice[int(XSLICE / 5 - 1)])
+                        A_0_y.append(np.sqrt(float(lstY[2]) / n_slice[int(XSLICE / 5 - 1)] / c / 1e2))
                         b_y.append(float(lstY[3]))
                         c_y.append(float(lstY[4]))
                         X_max_y.append(float(lstY[5]))
                         break  # We know there is only 1 interesting entry per file
+
+        X_max_dict[name] = X_max_x[-1]
 
     ax1.scatter(X_max_x[:iron_ind], A_0_x[:iron_ind], color=COLORS[ind])
     ax1.scatter(X_max_x[iron_ind:], A_0_x[iron_ind:], color=COLORS[ind], marker='x')
@@ -158,6 +168,44 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
 x_plot = np.arange(500, 900, 1)
 axis = [ax1, ax2, ax3, ax4, ax5, ax6]
 plots = [A_x_tot, A_y_tot, b_x_tot, b_y_tot, c_x_tot, c_y_tot]
+
+# Plot David's results on top
+if 'david' in PLOT_TYPES:
+    param_x_david = []
+    param_y_david = []
+    names_david = []
+
+    prev = os.getcwd()
+    os.chdir(DAVID_DIRECTORY)
+    for file in os.listdir('./'):
+        names_david.append(file.split('ampfit')[0])
+        david_data = np.genfromtxt(file).reshape((207, 6, 2, 3))
+        param_x_david.append(david_data[int(XSLICE / 5 - 1), ANTENNA, 0, :])
+        param_y_david.append(david_data[int(XSLICE / 5 - 1), ANTENNA, 1, :])
+    os.chdir(prev)
+
+    X_max_david = [X_max_dict[key] for key in names_david]
+    for ind, ax in enumerate(axis):
+        ran = int(ind / 2)
+        if ind % 2 == 0:
+            ax.scatter(X_max_david[:iron_index[0]], [p[ran] for p in param_x_david[:iron_index[0]]],
+                       color=COLORS_DAVID[0])
+            ax.scatter(X_max_david[iron_index[0]:len(param_x_david)], [p[ran] for p in param_x_david[iron_index[0]:]],
+                       color=COLORS_DAVID[0], marker='x')
+        else:
+            ax.scatter(X_max_david[:iron_index[0]], [p[ran] for p in param_y_david[:iron_index[0]]],
+                       color=COLORS_DAVID[0])
+            ax.scatter(X_max_david[iron_index[0]:len(param_y_david)], [p[ran] for p in param_y_david[iron_index[0]:]],
+                       color=COLORS_DAVID[0], marker='x')
+
+# if 'polynomial_fit' in FIT_TYPES:
+#         poly = np.polynomial.polynomial.polyfit(X_max_tot[:len(param_x_david)], param_x_david, 2)
+#         ax1.plot(x_plot, poly[0] + poly[1] * x_plot + poly[2] * x_plot ** 2,
+#                  label='Polynomial fit for David', linestyle='--', color=COLORS_DAVID[0])
+#
+#         poly = np.polynomial.polynomial.polyfit(X_max_tot[:len(param_y_david)], param_y_david, 2)
+#         ax2.plot(x_plot, poly[0] + poly[1] * x_plot + poly[2] * x_plot ** 2,
+#                  label='Polynomial fit for David', linestyle='--', color=COLORS_DAVID[0])
 
 # Calculate, fit and plot profiles
 if 'profile' in FIT_TYPES:

@@ -191,9 +191,9 @@ class TemplatesAnalyzer(object):
             freq = np.fft.rfftfreq(len(data), 2e-10)
             frange = np.logical_and(10 * 1e6 <= freq, freq <= 5 * 1e8)
 
-            # Calculate the normalised amplitude spectrum and band-pass filter it
-            spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:], norm='forward')
-            amplitude = np.apply_along_axis(np.abs, 0, spectrum) * 2
+            # Calculate the amplitude spectrum and band-pass filter it
+            spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:])
+            amplitude = np.apply_along_axis(np.abs, 0, spectrum)
             filtered = amplitude[frange]
 
             # Fit the amplitude spectrum (report if linear fit is used)
