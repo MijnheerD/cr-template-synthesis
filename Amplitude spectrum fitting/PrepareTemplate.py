@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.constants import c as c_vacuum
 
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
-PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramProfileFitNew50/'
+PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramProfileFitUB/'
+F0 = 0
 TEMPLATE_NR = '100001'
 TARGET_NR = '100000'
 
@@ -125,8 +126,8 @@ d = np.maximum(inner, np.zeros(inner.shape)) ** 2
 
 # Calculate normalization factors, with frequency in MHz
 for i, f in enumerate(freq[f_range] / 1e6):
-    A_temp[:, :, i, :] = A0 * np.exp(b * f + c * f ** 2) + d[:, :, np.newaxis]
-    A_synth[:, :, i, :] = A0_target * np.exp(b_target * f + c_target * f ** 2)
+    A_temp[:, :, i, :] = A0 * np.exp(b * (f - F0) + c * (f - F0) ** 2) + d[:, :, np.newaxis]
+    A_synth[:, :, i, :] = A0_target * np.exp(b_target * (f - F0) + c_target * (f - F0) ** 2)
 
 # Normalized amplitude spectrum
 A_res = A / A_temp
@@ -172,16 +173,17 @@ for ind, antenna in enumerate((1, 3, 5)):
 
     signal_scale = E_scale[antenna, :, :]
 
-    time = np.genfromtxt(f'raw_{antenna}x5.dat', np.float32)[:, 0]
-    x_axis = time * 1e9
+    temp_time = np.genfromtxt(os.path.join('..', f'SIM{TEMPLATE_NR}_coreas/', f'raw_{antenna}x5.dat'),
+                              np.float32)[:, 0] * 1e9
+    target_time = np.genfromtxt(f'raw_{antenna}x5.dat', np.float32)[:, 0] * 1e9
 
-    ax[ind+1].plot(x_axis, np.real(signal[:, 0]), c='k', linestyle='--')
-    ax[ind+1].plot(x_axis, np.real(signal_synth[:, 0]), c='maroon', linestyle='--')
-    ax[ind+1].plot(x_axis, np.real(signal_scale[:, 0]), c='green', linestyle='--')
+    ax[ind+1].plot(target_time, np.real(signal[:, 0]), c='k', linestyle='--')
+    ax[ind+1].plot(temp_time, np.real(signal_synth[:, 0]), c='maroon', linestyle='--')
+    # ax[ind+1].plot(temp_time, np.real(signal_scale[:, 0]), c='green', linestyle='--')
 
-    ax[ind+1].plot(x_axis, np.real(signal[:, 1]), label='Real', c='k')
-    ax[ind+1].plot(x_axis, np.real(signal_synth[:, 1]), label='Synthesized', c='maroon')
-    ax[ind+1].plot(x_axis, np.real(signal_scale[:, 1]), label='Scaled model', c='green')
+    ax[ind+1].plot(target_time, np.real(signal[:, 1]), label='Real', c='k')
+    ax[ind+1].plot(temp_time, np.real(signal_synth[:, 1]), label='Synthesized', c='maroon')
+    # ax[ind+1].plot(temp_time, np.real(signal_scale[:, 1]), label='Scaled model', c='green')
 
     ax[ind+1].set_xlim(ax_x_lim[ind])
     ax[ind+1].set_ylim(ax_y_lim[ind])
@@ -215,18 +217,29 @@ x_axis = freq / 1e6
 ax[1].plot(x_axis, np.abs(signal[:, 0]), label='Amplitude real', c='k', linestyle='--')
 ax[1].plot(x_axis, np.abs(signal_synth[:, 0]), label='Amplitude synthesized', c='maroon', linestyle='--')
 
+x = np.abs(signal_synth[:210, 0])/np.abs(signal[:210, 0])
+print("Charge excess")
+print(np.mean(x), np.std(x))
+
 ax[2].plot(x_axis, np.abs(signal[:, 1]), label='Amplitude real', c='k')
 ax[2].plot(x_axis, np.abs(signal_synth[:, 1]), label='Amplitude synthesized', c='maroon')
+
+y = np.abs(signal_synth[:210, 1])/np.abs(signal[:210, 1])
+print("Geomagnetic")
+print(np.mean(y), np.std(y))
 
 ax[3].plot(x_axis, np.angle(signal[:, 0]), c='grey', linestyle='--')
 ax[3].plot(x_axis, np.angle(signal_synth[:, 0]), c='red', linestyle='--')
 ax[3].plot(x_axis, np.angle(signal[:, 1]), label='Phase real', c='grey')
 ax[3].plot(x_axis, np.angle(signal_synth[:, 1]), label='Phase synthesized', c='red')
+# ax[3].plot(x_axis, Phi_res[antenna], label='Phase template', c='purple', linestyle=':')
 
 ax[1].set_xlim([0, 500])
+ax[1].set_yscale('log')
 ax[1].legend()
 
 ax[2].set_xlim([0, 500])
+ax[2].set_yscale('log')
 ax[2].set_xlabel(r"f [MHz]")
 ax[2].set_ylabel(r"A [$\mu$ V/m]")
 ax[2].legend()
@@ -245,7 +258,7 @@ plt.show()
 
 # Animate contributions to signal
 
-for i in range(157, n_slice):
+for i in range(n_slice):
     for ind, antenna in enumerate((1, 3, 5)):
         data = np.zeros([n_time, 3])
         for file in glob.glob(f'raw_{antenna}*'):
