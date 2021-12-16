@@ -10,7 +10,7 @@ TARGET_NR = '100000'
 
 
 def amplitude_function(params, frequencies, d_noise=0.):
-    return params[0] * np.exp(params[1] * (frequencies - F0) + params[2] * (frequencies - F0) ** 2) + d_noise ** 2
+    return params[0] * np.exp(params[1] * (frequencies - F0) + params[2] * (frequencies - F0) ** 2) + d_noise
 
 
 def load_shower_params(shower_nr, path=SIM_DIRECTORY):
@@ -76,8 +76,8 @@ def norm_template(temp_nr, temp_long, temp_max, temp_params, path=SIM_DIRECTORY)
                                            1, amp_params)
             amp_corr[np.where(amp_corr <= 1e-32)] = 1.
 
-            amplitude[slice_nr, antenna_nr] = np.abs(spectrum) / amp_corr
-            phases[slice_nr, antenna_nr] = np.angle(spectrum)
+            amplitude[slice_nr, antenna_nr] = np.apply_along_axis(np.abs, 1, spectrum) / amp_corr
+            phases[slice_nr, antenna_nr] = np.apply_along_axis(np.angle, 1, spectrum)
 
     os.chdir(prev)
 
@@ -116,10 +116,10 @@ def synthesize_shower(temp_amps, temp_phase, target_long, target_max, target_par
             amp_params = np.polynomial.polynomial.polyval(target_max, fit_params.T).T
 
             target_amp = np.apply_along_axis(lambda p: amplitude_function(p, freq), 1, amp_params)
-            target_amp[:, np.logical_not(f_range)] = 0.
 
             synth_spectrum = temp_amps[slice_nr, antenna_nr] * target_amp * target_long[slice_nr] * \
-                             np.exp(1j * temp_phase[slice_nr, antenna_nr])
+                np.exp(1j * temp_phase[slice_nr, antenna_nr])
+            synth_spectrum[:, np.logical_not(f_range)] = 0.
             synth[antenna_nr, :, :] += np.apply_along_axis(np.fft.irfft, 1, synth_spectrum)
 
     return synth

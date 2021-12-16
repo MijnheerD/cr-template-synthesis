@@ -54,7 +54,7 @@ for i, antenna in enumerate([1, 3, 5]):
     synth_filtered = np.apply_along_axis(filter_pulse, 1, synth_traces[antenna, :, :])
     real_filtered = np.apply_along_axis(filter_pulse, 1, target_traces[antenna, :, :])
     plot_antenna(ax[i + 1], synth_filtered, real_filtered,
-                 antenna_number=antenna, x_lim=ax_x_lim[i])
+                 antenna_number=antenna, x_lim=ax_x_lim[i], y_lim=ax_y_lim[i])
 
 fig.suptitle(r'$X_{max}^{template}$ = ' + str(int(temp_x_max)) + ' - '
              + r'$X_{max}^{real}$ = ' + str(int(target_x_max)))
