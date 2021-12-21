@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 SLICE = 650
 ANTENNA = (1, 3, 5)
+X_LIM = [(0, 10), (2, 16), (50, 70)]
 
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
 FIG_DIRECTORY = '../Figures/SpectrumComparisons'
@@ -76,8 +77,10 @@ def norm_template(temp_trace, temp_amp_corr, temp_n_slice):
 
 
 def filter_pulse(pulse, f_range):
-    filtered = pulse * f_range
-    return filtered
+    spectrum = np.fft.rfft(pulse)
+    filtered = spectrum * f_range
+
+    return np.fft.irfft(filtered)
 
 
 # Get all the fit parameters from the files
@@ -89,8 +92,10 @@ d_fit = get_d_fit(SLICE)
 # Prepare the figure
 fig_amp, ax = plt.subplots(2, 2, num=1, figsize=(15, 10))
 fig_phase, ax2 = plt.subplots(2, 2, num=2, figsize=(12, 10))
+fig_pulse, ax3 = plt.subplots(2, 2, num=3, figsize=(16, 12))
 ax = ax.flatten()
 ax2 = ax2.flatten()
+ax3 = ax3.flatten()
 
 # Load the shower parameters
 x_slices, template_long, template_max = load_shower_params(TEMPLATE_NR)
@@ -105,9 +110,16 @@ ax2[0].plot(x_slices, template_long, c='purple', label='Template')
 ax2[0].plot(x_slices, target_long, c='k', label='Real')
 ax2[0].legend()
 
+ax3[0].plot(x_slices, template_long, c='purple', label='Template')
+ax3[0].plot(x_slices, target_long, c='k', label='Real')
+ax3[0].legend()
+
 for ind, antenna in enumerate(ANTENNA):
     template = np.genfromtxt(os.path.join(SIM_DIRECTORY, f'SIM{TEMPLATE_NR}_coreas', f'raw_{antenna}x{SLICE}.dat'))
     target = np.genfromtxt(os.path.join(SIM_DIRECTORY, f'SIM{TARGET_NR}_coreas', f'raw_{antenna}x{SLICE}.dat'))
+
+    template_time = template[:, 0] * 1e9
+    target_time = target[:, 0] * 1e9
 
     freq = np.fft.rfftfreq(len(template), 2e-10) / 1e6
     freq_range = freq < 502
@@ -129,11 +141,18 @@ for ind, antenna in enumerate(ANTENNA):
     synth_amp = template_amp * np.stack((amp_corr_x, amp_corr_y)).T * target_long[int(SLICE / 5 - 1)]
     synth_phase = template_phase
 
+    synth_filtered = np.apply_along_axis(np.fft.irfft, 0,
+                                         synth_amp * np.exp(1j * synth_phase) * freq_range[:, np.newaxis])
+
     amp_corr_x_david = calc_amp_corr(target_max, param_x_david, freq, f0=0)
     amp_corr_y_david = calc_amp_corr(target_max, param_y_david, freq, f0=0)
     synth_amp_david = template_amp_david * np.stack((amp_corr_x_david, amp_corr_y_david)).T \
         * target_long[int(SLICE / 5 - 1)]
     synth_phase_david = template_phase_david
+
+    synth_filtered_david = np.apply_along_axis(np.fft.irfft, 0,
+                                               synth_amp_david * np.exp(1j * synth_phase_david) *
+                                               freq_range[:, np.newaxis])
 
     target_amp, target_phase = norm_template(target[:, 1:3], np.ones(synth_amp.shape), 1.)
 
@@ -156,6 +175,17 @@ for ind, antenna in enumerate(ANTENNA):
     ax2[ind + 1].set_title(f'Antenna {antenna}')
     ax2[ind + 1].legend()
 
+    ax3[ind + 1].plot(template_time, synth_filtered[:, 0], c='maroon', linestyle='--')
+    ax3[ind + 1].plot(template_time, synth_filtered_david[:, 0], c='green', linestyle='--')
+    ax3[ind + 1].plot(target_time, filter_pulse(target[:, 1], freq_range), c='k', linestyle='--')
+    ax3[ind + 1].plot(template_time, synth_filtered[:, 1], c='maroon', label='Synthesized')
+    ax3[ind + 1].plot(template_time, synth_filtered_david[:, 1], c='green', label='David parameters')
+    ax3[ind + 1].plot(target_time, filter_pulse(target[:, 2], freq_range), c='k', label='Real')
+    ax3[ind + 1].set_xlim(X_LIM[ind])
+    ax3[ind + 1].set_xlabel(r'Time $[ns]$')
+    ax3[ind + 1].set_title(f'Antenna {antenna}')
+    ax3[ind + 1].legend()
+
 # Set figure parameters and save
 fig_amp.suptitle(r'Mapping $X_{max}^{temp}$ = ' + str(int(template_max))
                  + r' to $X_{max}^{target}$ = ' + str(int(target_max))
@@ -168,3 +198,6 @@ fig_phase.suptitle(r'Mapping $X_{max}^{temp}$ = ' + str(int(template_max))
                    + f'\n Phase spectra for slice {SLICE} g/cm2')
 plt.figure(fig_phase)
 plt.savefig(os.path.join(FIG_DIRECTORY, f'PhiSpectrumComparison{SLICE}.png'), bbox_inches='tight')
+
+plt.figure(fig_pulse)
+plt.savefig(os.path.join(FIG_DIRECTORY, f'PulseComparison{SLICE}.png'), bbox_inches='tight')
