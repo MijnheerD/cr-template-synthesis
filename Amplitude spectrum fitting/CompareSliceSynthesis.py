@@ -122,50 +122,67 @@ for ind, antenna in enumerate(ANTENNA):
     target_time = target[:, 0] * 1e9
 
     freq = np.fft.rfftfreq(len(template), 2e-10) / 1e6
-    freq_range = freq < 502
+    freq_range = np.logical_and(20 < freq,  freq < 502)
 
+    # Calculate the normalised template using my parameters
     amp_corr_x = calc_amp_corr(template_max, param_x, freq, d_fit[ind])
     amp_corr_y = calc_amp_corr(template_max, param_y, freq, d_fit[ind])
     template_amp, template_phase = norm_template(template[:, 1:3],
                                                  np.stack((amp_corr_x, amp_corr_y)).T,
                                                  template_long[int(SLICE / 5 - 1)])
 
+    # Calculate the normalised template using David's parameters
     amp_corr_x_david = calc_amp_corr(template_max, param_x_david, freq, d_fit[ind], f0=0)
     amp_corr_y_david = calc_amp_corr(template_max, param_y_david, freq, d_fit[ind], f0=0)
     template_amp_david, template_phase_david = norm_template(template[:, 1:3],
                                                              np.stack((amp_corr_x_david, amp_corr_y_david)).T,
                                                              template_long[int(SLICE / 5 - 1)])
 
+    # Calculate synthesized amplitude and phase using my parameters
     amp_corr_x = calc_amp_corr(target_max, param_x, freq)
     amp_corr_y = calc_amp_corr(target_max, param_y, freq)
     synth_amp = template_amp * np.stack((amp_corr_x, amp_corr_y)).T * target_long[int(SLICE / 5 - 1)]
     synth_phase = template_phase
 
+    # Synthesize the pulse
     synth_filtered = np.apply_along_axis(np.fft.irfft, 0,
                                          synth_amp * np.exp(1j * synth_phase) * freq_range[:, np.newaxis])
 
+    # Calculate synthesized amplitude and phase using David's parameters
     amp_corr_x_david = calc_amp_corr(target_max, param_x_david, freq, f0=0)
     amp_corr_y_david = calc_amp_corr(target_max, param_y_david, freq, f0=0)
     synth_amp_david = template_amp_david * np.stack((amp_corr_x_david, amp_corr_y_david)).T \
         * target_long[int(SLICE / 5 - 1)]
     synth_phase_david = template_phase_david
 
+    # Synthesize the pulse with David's amplitude and phases
     synth_filtered_david = np.apply_along_axis(np.fft.irfft, 0,
                                                synth_amp_david * np.exp(1j * synth_phase_david) *
                                                freq_range[:, np.newaxis])
 
     target_amp, target_phase = norm_template(target[:, 1:3], np.ones(synth_amp.shape), 1.)
 
+    # Make a quadratic fit of the real amplitude spectrum in the freq range
+    poly_charge = np.polyfit(freq[freq_range], np.log(target_amp[:, 0][freq_range]), 2)
+    poly_geo = np.polyfit(freq[freq_range], np.log(target_amp[:, 1][freq_range]), 2)
+
+    # Plot the amplitude for each antenna with fit overlayed
     ax[ind + 1].plot(freq[freq_range], synth_amp[:, 0][freq_range], c='maroon', linestyle='--')
     ax[ind + 1].plot(freq[freq_range], synth_amp_david[:, 0][freq_range], c='green', linestyle='--')
     ax[ind + 1].plot(freq[freq_range], target_amp[:, 0][freq_range], c='k', linestyle='--')
+    ax[ind + 1].plot(freq[freq_range], np.exp(np.polyval(poly_charge, freq[freq_range])),
+                     c='mediumblue', linestyle='--')
     ax[ind + 1].plot(freq[freq_range], synth_amp[:, 1][freq_range], c='maroon', label='Synthesized')
     ax[ind + 1].plot(freq[freq_range], synth_amp_david[:, 1][freq_range], c='green', label='David parameters')
     ax[ind + 1].plot(freq[freq_range], target_amp[:, 1][freq_range], c='k', label='Real')
+    ax[ind + 1].plot(freq[freq_range], np.exp(np.polyval(poly_geo, freq[freq_range])),
+                     c='mediumblue', label='Fit to real')
     ax[ind + 1].set_xlabel(r'Freq $[MHz]$')
+    ax[ind + 1].set_yscale('log')
     ax[ind + 1].set_title(f'Antenna {antenna}')
     ax[ind + 1].legend()
 
+    # Plot the phase spectrum for each antenna
     ax2[ind + 1].plot(freq[freq_range], synth_phase[:, 0][freq_range], c='maroon', linestyle='--')
     ax2[ind + 1].plot(freq[freq_range], target_phase[:, 0][freq_range], c='k', linestyle='--')
     ax2[ind + 1].plot(freq[freq_range], synth_phase[:, 1][freq_range], c='maroon', label='Synthesized')
@@ -175,6 +192,7 @@ for ind, antenna in enumerate(ANTENNA):
     ax2[ind + 1].set_title(f'Antenna {antenna}')
     ax2[ind + 1].legend()
 
+    # Plot pulse shapes in each antenna
     ax3[ind + 1].plot(template_time, synth_filtered[:, 0], c='maroon', linestyle='--')
     ax3[ind + 1].plot(template_time, synth_filtered_david[:, 0], c='green', linestyle='--')
     ax3[ind + 1].plot(target_time, filter_pulse(target[:, 1], freq_range), c='k', linestyle='--')
