@@ -3,13 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-SLICE = 650
+SLICE = 600
 ANTENNA = (1, 3, 5)
 X_LIM = [(0, 10), (2, 16), (50, 70)]
 
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
 FIG_DIRECTORY = '../Figures/SpectrumComparisons'
-PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramProfileFitUB50/'
+PARAM_DIRECTORY = 'paramProfileFit20UB50/'
 F0 = 50
 TEMPLATE_NR = '100001'
 TARGET_NR = '100000'

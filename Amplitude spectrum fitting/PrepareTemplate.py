@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 from scipy.constants import c as c_vacuum
 
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
-PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramProfileFitUB/'
-F0 = 0
-TEMPLATE_NR = '100001'
-TARGET_NR = '100000'
+PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Parameters/paramProfileFit_GRAND/'
+F0 = 100
+TEMPLATE_NR = '100000'
+TARGET_NR = '100001'
 
 
 def get_number_of_particles(path):
@@ -55,7 +55,7 @@ x_max_vector_target = np.array([1, x_max, x_max ** 2])
 with open(os.path.join(template_dir, f'raw_0x5.dat'), 'r') as file:
     data = np.genfromtxt(file) * c_vacuum * 1e2
 freq = np.fft.rfftfreq(len(data), 2e-10)
-f_range = freq < 502 * 1e6
+f_range = np.logical_and(50 * 1e6 <= freq, freq <= 200 * 1e6)
 n_freq = sum(f_range)
 n_time = len(data)
 n_pol = 2
@@ -145,10 +145,10 @@ E_scale = np.sum(E_scale, axis=1)
 # Compare pulses in filtered frequency band 0-502MHz
 os.chdir(os.path.join(SIM_DIRECTORY, f'SIM{TARGET_NR}_coreas/'))
 
-fig, ax = plt.subplots(2, 2, figsize=(15, 15))
+fig, ax = plt.subplots(2, 2, figsize=(18, 14))
 ax = ax.reshape((4,))
-ax_x_lim = [(0, 8), (2, 20), (20, 100)]
-ax_y_lim = [(-250, 650), (-100, 400), (-7.5, 10)]
+ax_x_lim = [(-5, 10), (0, 20), (0, 100)]
+ax_y_lim = [(-250, 650), (-100, 300), (-2, 2)]
 
 # Plot longitudinal profile
 ax[0].plot(slices, particles_temp, c='purple', label='Template')
@@ -186,7 +186,7 @@ for ind, antenna in enumerate((1, 3, 5)):
     # ax[ind+1].plot(temp_time, np.real(signal_scale[:, 1]), label='Scaled model', c='green')
 
     ax[ind+1].set_xlim(ax_x_lim[ind])
-    ax[ind+1].set_ylim(ax_y_lim[ind])
+    # ax[ind+1].set_ylim(ax_y_lim[ind])
     ax[ind+1].set_title(r'$X_{max}^{Real}$ = ' + str(int(x_max_vector_target[1])) + r' $g/cm^2$ - '
                         r'$X_{max}^{Temp}$ = ' + str(int(x_max_vector[1])) + r' $g/cm^2$ - '
                         f'r = {int(distances[antenna] / 100)} m')

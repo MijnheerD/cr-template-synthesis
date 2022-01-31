@@ -151,7 +151,8 @@ class TemplatesAnalyzer(object):
         self.param_path = kwargs.get('parameter_path', working_path)
         self.distances = distances
         self.log_file = os.path.join(os.getcwd(), log_file)
-        self.fit_center = 0
+        self.fit_range = [10, 502]  # in MHz
+        self.fit_center = 50  # in MHz
 
         self._check_dirs()
 
@@ -189,7 +190,7 @@ class TemplatesAnalyzer(object):
 
             # Calculate frequency values and filter range
             freq = np.fft.rfftfreq(len(data), 2e-10)
-            frange = np.logical_and(10 * 1e6 <= freq, freq <= 5 * 1e8)
+            frange = np.logical_and(self.fit_range[0] * 1e6 <= freq, freq <= self.fit_range[1] * 1e6)
 
             # Calculate the amplitude spectrum and band-pass filter it
             spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:])
@@ -344,6 +345,8 @@ class TemplatesAnalyzer(object):
         Fit all the simulations in the directory 'path' using multiprocessing.
         """
         from datetime import date
+
+        assert self.fit_center in range(self.fit_range[0], self.fit_range[1]), "Fit center must be inside fit range"
 
         os.chdir(self.directory)
 

@@ -5,10 +5,10 @@ DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna_nr radial distances 
 COLORS = ['cyan', 'magenta', 'yellow']  # colors to be used for fit figures
 
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
-PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramFitUB50/'
-FIT_DIRECTORY = ['/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/fitFilesUB5017/',
-                 '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/fitFilesUB5018/',
-                 '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/fitFilesUB5019/']
+PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/paramFit20UB50/'
+FIT_DIRECTORY = ['/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/fitFiles20UB5017/',
+                 '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/fitFiles20UB5018/',
+                 '/home/mdesmet/PycharmProjects/cr-template-synthesis/Amplitude spectrum fitting/fitFiles20UB5019/']
 REAS_DIRECTORY = ['/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/',
                   '/mnt/hgfs/Shared data/BulkSynth/bulksynth-18/',
                   '/mnt/hgfs/Shared data/BulkSynth/bulksynth-19/']

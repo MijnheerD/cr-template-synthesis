@@ -26,10 +26,10 @@ def fit_profile(fit_fun, bins, means, stds):
     return popt, pcov
 
 
-FIT_DIRECTORIES = ['fitFiles17', 'fitFiles18', 'fitFiles19']
+FIT_DIRECTORIES = ['fitFiles20UB5017', 'fitFiles20UB5018', 'fitFiles20UB5019']
 COLORS = ['cyan', 'magenta', 'yellow']
 REAS_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/CORSIKA_long_files'
-PARAM_DIRECTORY = 'paramProfileFit'
+PARAM_DIRECTORY = 'paramProfileFit20UB50'
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]
 
 # Open all simulation files, grouped per polarization
