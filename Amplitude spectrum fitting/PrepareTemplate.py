@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 from scipy.constants import c as c_vacuum
 
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
-PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Parameters/paramProfileFit_GRAND/'
-F0 = 100
-TEMPLATE_NR = '100000'
-TARGET_NR = '100001'
+PARAM_DIRECTORY = '/home/mdesmet/PycharmProjects/cr-template-synthesis/Parameters/paramProfileFit_LOFAR/'
+F0 = 50
+TEMPLATE_NR = '100001'
+TARGET_NR = '100000'
 
 
 def get_number_of_particles(path):
@@ -55,7 +55,7 @@ x_max_vector_target = np.array([1, x_max, x_max ** 2])
 with open(os.path.join(template_dir, f'raw_0x5.dat'), 'r') as file:
     data = np.genfromtxt(file) * c_vacuum * 1e2
 freq = np.fft.rfftfreq(len(data), 2e-10)
-f_range = np.logical_and(50 * 1e6 <= freq, freq <= 200 * 1e6)
+f_range = np.logical_and(30 * 1e6 <= freq, freq <= 80 * 1e6)
 n_freq = sum(f_range)
 n_time = len(data)
 n_pol = 2
@@ -74,7 +74,7 @@ A0_target = np.zeros((n_antenna, n_slice, n_pol))
 b_target = np.zeros((n_antenna, n_slice, n_pol))
 c_target = np.zeros((n_antenna, n_slice, n_pol))
 
-E_scale = np.zeros((n_antenna, n_slice, n_time, n_pol))
+E_temp = np.zeros((n_antenna, n_slice, n_time, n_pol))
 
 # Analyze all the files of the template shower
 os.chdir(template_dir)
@@ -90,8 +90,8 @@ for slice_nr in range(n_slice):
         A[antenna_nr, slice_nr, :, :] = amplitude[f_range][:, :n_pol]
         Phi[antenna_nr, slice_nr, :, :] = phase[f_range][:, :n_pol]
 
-        E_scale[antenna_nr, slice_nr, :, :] = np.apply_along_axis(np.fft.irfft, 0,
-                                                                  spectrum * f_range[:, np.newaxis])[:, :n_pol]
+        E_temp[antenna_nr, slice_nr, :, :] = np.apply_along_axis(np.fft.irfft, 0,
+                                                                 spectrum * f_range[:, np.newaxis])[:, :n_pol]
 
     with open(os.path.join(PARAM_DIRECTORY, 'fitX', f'slice{int((slice_nr + 1) * 5)}.dat'), 'r') as fileX, \
             open(os.path.join(PARAM_DIRECTORY, 'fitY', f'slice{int((slice_nr + 1) * 5)}.dat'), 'r') as fileY:
@@ -138,16 +138,12 @@ Phi_res = Phi
 G_synth = A_synth * A_res
 E_synth = G_synth * np.exp(Phi_res * 1j)
 
-# Calculate the synthesized pulse with simple scaling relation
-E_scale = np.apply_along_axis(lambda ar: ar * particles_target / particles_temp, 1, E_scale)
-E_scale = np.sum(E_scale, axis=1)
-
 # Compare pulses in filtered frequency band 0-502MHz
 os.chdir(os.path.join(SIM_DIRECTORY, f'SIM{TARGET_NR}_coreas/'))
 
 fig, ax = plt.subplots(2, 2, figsize=(18, 14))
 ax = ax.reshape((4,))
-ax_x_lim = [(-5, 10), (0, 20), (0, 100)]
+ax_x_lim = [(-5, 15), (0, 30), (0, 80)]
 ax_y_lim = [(-250, 650), (-100, 300), (-2, 2)]
 
 # Plot longitudinal profile
@@ -171,7 +167,7 @@ for ind, antenna in enumerate((1, 3, 5)):
     E_antenna[:, f_range, :] = E_synth[antenna, :, :, :]
     signal_synth = np.sum(np.apply_along_axis(np.fft.irfft, 1, E_antenna), axis=0)
 
-    signal_scale = E_scale[antenna, :, :]
+    signal_temp = np.sum(E_temp, axis=1)[antenna, :, :]
 
     temp_time = np.genfromtxt(os.path.join('..', f'SIM{TEMPLATE_NR}_coreas/', f'raw_{antenna}x5.dat'),
                               np.float32)[:, 0] * 1e9
@@ -179,11 +175,11 @@ for ind, antenna in enumerate((1, 3, 5)):
 
     ax[ind+1].plot(target_time, np.real(signal[:, 0]), c='k', linestyle='--')
     ax[ind+1].plot(temp_time, np.real(signal_synth[:, 0]), c='maroon', linestyle='--')
-    # ax[ind+1].plot(temp_time, np.real(signal_scale[:, 0]), c='green', linestyle='--')
+    ax[ind+1].plot(temp_time, np.real(signal_temp[:, 0]), c='purple', linestyle='--')
 
     ax[ind+1].plot(target_time, np.real(signal[:, 1]), label='Real', c='k')
     ax[ind+1].plot(temp_time, np.real(signal_synth[:, 1]), label='Synthesized', c='maroon')
-    # ax[ind+1].plot(temp_time, np.real(signal_scale[:, 1]), label='Scaled model', c='green')
+    ax[ind+1].plot(temp_time, np.real(signal_temp[:, 1]), label='Template', c='purple')
 
     ax[ind+1].set_xlim(ax_x_lim[ind])
     # ax[ind+1].set_ylim(ax_y_lim[ind])
