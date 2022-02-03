@@ -1,18 +1,22 @@
 import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-SLICE = 600
+if __name__ == "__main__" and len(sys.argv) > 1:
+    SLICE = int(sys.argv[1])
+else:
+    SLICE = 700
 ANTENNA = (1, 3, 5)
 X_LIM = [(0, 10), (2, 16), (50, 70)]
 
 SIM_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
 FIG_DIRECTORY = '../Figures/SpectrumComparisons'
-PARAM_DIRECTORY = 'paramProfileFit20UB50/'
+PARAM_DIRECTORY = '../Parameters/paramProfileFit_LOFAR/'
 F0 = 50
-TEMPLATE_NR = '100001'
-TARGET_NR = '100000'
+TEMPLATE_NR = '100070'
+TARGET_NR = '100031'
 
 
 def get_d_fit(slice_grams, antenna_nr=ANTENNA):
@@ -122,7 +126,7 @@ for ind, antenna in enumerate(ANTENNA):
     target_time = target[:, 0] * 1e9
 
     freq = np.fft.rfftfreq(len(template), 2e-10) / 1e6
-    freq_range = np.logical_and(20 < freq,  freq < 502)
+    freq_range = np.logical_and(30 < freq,  freq < 80)
 
     # Calculate the normalised template using my parameters
     amp_corr_x = calc_amp_corr(template_max, param_x, freq, d_fit[ind])
@@ -208,14 +212,14 @@ for ind, antenna in enumerate(ANTENNA):
 fig_amp.suptitle(r'Mapping $X_{max}^{temp}$ = ' + str(int(template_max))
                  + r' to $X_{max}^{target}$ = ' + str(int(target_max))
                  + f'\n Amplitude spectra for slice {SLICE} g/cm2')
-plt.figure(fig_amp)
-plt.savefig(os.path.join(FIG_DIRECTORY, f'AmpSpectrumComparison{SLICE}.png'), bbox_inches='tight')
+fig_amp.savefig(os.path.join(FIG_DIRECTORY, f'AmpSpectrumComparison{SLICE}.png'), bbox_inches='tight')
 
 fig_phase.suptitle(r'Mapping $X_{max}^{temp}$ = ' + str(int(template_max))
                    + r' to $X_{max}^{target}$ = ' + str(int(target_max))
                    + f'\n Phase spectra for slice {SLICE} g/cm2')
-plt.figure(fig_phase)
-plt.savefig(os.path.join(FIG_DIRECTORY, f'PhiSpectrumComparison{SLICE}.png'), bbox_inches='tight')
+fig_phase.savefig(os.path.join(FIG_DIRECTORY, f'PhiSpectrumComparison{SLICE}.png'), bbox_inches='tight')
 
-plt.figure(fig_pulse)
-plt.savefig(os.path.join(FIG_DIRECTORY, f'PulseComparison{SLICE}.png'), bbox_inches='tight')
+fig_pulse.suptitle(r'Mapping $X_{max}^{temp}$ = ' + str(int(template_max))
+                   + r' to $X_{max}^{target}$ = ' + str(int(target_max))
+                   + f'\n Pulses for slice {SLICE} g/cm2')
+fig_pulse.savefig(os.path.join(FIG_DIRECTORY, f'PulseComparison{SLICE}.png'), bbox_inches='tight')
