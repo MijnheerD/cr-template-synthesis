@@ -2,6 +2,7 @@ import os
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import rcParams
 from scipy.stats import binned_statistic
 from scipy.optimize import curve_fit
 from scipy.constants import c
@@ -35,20 +36,21 @@ def plot_fit_profile(ax, x_plot, param, bins, mean, std, bar=False):
 
 
 FIT_DIRECTORIES = ['fitFilesUB17', 'fitFilesUB18', 'fitFilesUB19']
-FIT_TYPES = {'profile', 'polynomial_fit'}
-PLOT_TYPES = {'fit', 'david'}
+FIT_TYPES = {'profile'}
+PLOT_TYPES = {'fit', 'target'}
 COLORS = ['cyan', 'magenta', 'yellow']
 COLORS_DAVID = ['green', 'red', 'orange']
 REAS_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/CORSIKA_long_files'
 DAVID_DIRECTORY = '/mnt/hgfs/Shared data/ampfitQ/'
-PARAM_DIRECTORY = 'paramProfileFitUB'
+PARAM_DIRECTORY = '../Parameters/paramProfileFitUB'
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna_nr radial distances to shower core, in cm
 
 # if __name__ == "__main__":
 #     XSLICE = int(sys.argv[1])
 #     ANTENNA = int(sys.argv[2])
-XSLICE = 900
+XSLICE = 600
 ANTENNA = 3
+TARGET = '100000'
 
 arX = np.genfromtxt(os.path.join(PARAM_DIRECTORY, 'fitX', 'slice' + str(XSLICE) + '.dat'))
 arY = np.genfromtxt(os.path.join(PARAM_DIRECTORY, 'fitY', 'slice' + str(XSLICE) + '.dat'))
@@ -65,6 +67,7 @@ c_x_tot, c_y_tot = [], []
 X_max_tot = []
 
 iron_index = []
+target_index = []
 X_max_dict = {}
 
 for ind, directory in enumerate(FIT_DIRECTORIES):
@@ -82,15 +85,20 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
     iron_ind = 0
     for i, file in enumerate(os.listdir(os.path.join(directory, 'fitX'))):
         name = file.split('.')[0].split('SIM')[1]
+        # Look if we are dealing with the first iron shower
         if name.startswith('2') and proton:
             proton = False
-            iron_ind += i
-            iron_index.append(iron_ind)
+            iron_index.append(i)
+        # Look for index in tot lists of target shower
+        if name == TARGET:
+            target_index.append(i + len(X_max_tot))
+        # Check if shower has enough particles in this particular slice
         n_slice = get_number_of_particles(os.path.join(REAS_DIRECTORY,
                                                        'DAT' + file.split('.')[0].split('SIM')[1] + '.long'))
         if n_slice[int(XSLICE / 5 - 1)] < 1e-6 * max(n_slice):
             iron_ind -= 1
             continue
+
         with open(os.path.join(directory, 'fitX', file), 'r') as fX, \
                 open(os.path.join(directory, 'fitY', file), 'r') as fY:
             for lineX, lineY in zip(fX, fY):
@@ -110,6 +118,7 @@ for ind, directory in enumerate(FIT_DIRECTORIES):
 
         X_max_dict[name] = X_max_x[-1]
 
+    iron_ind += iron_index[-1]
     ax1.scatter(X_max_x[:iron_ind], A_0_x[:iron_ind], color=COLORS[ind])
     ax1.scatter(X_max_x[iron_ind:], A_0_x[iron_ind:], color=COLORS[ind], marker='x')
     ax2.scatter(X_max_y[:iron_ind], A_0_y[:iron_ind], color=COLORS[ind])
@@ -206,6 +215,13 @@ if 'david' in PLOT_TYPES:
 #         poly = np.polynomial.polynomial.polyfit(X_max_tot[:len(param_y_david)], param_y_david, 2)
 #         ax2.plot(x_plot, poly[0] + poly[1] * x_plot + poly[2] * x_plot ** 2,
 #                  label='Polynomial fit for David', linestyle='--', color=COLORS_DAVID[0])
+
+# Indicate position of target shower
+if 'target' in PLOT_TYPES:
+    target = target_index[0]
+    for ind, ax in enumerate(axis):
+        ax.scatter(X_max_tot[target], plots[ind][target], marker='^', color='orangered',
+                   s=4 * rcParams['lines.markersize'] ** 2)
 
 # Calculate, fit and plot profiles
 if 'profile' in FIT_TYPES:
