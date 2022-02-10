@@ -3,11 +3,11 @@ Tool for automatic benchmarker of synthesis result, as a function of difference 
 """
 
 import os
+import glob
 import numpy as np
 from GlobalVars import RANGES_LOFAR as RANGES
 from GlobalVars import TIME_DELTA, DISTANCES
 from crsynthesizer.FileReaderWriter import working_directory
-
 
 F_MIN, F_MAX, F0 = RANGES
 
@@ -16,7 +16,7 @@ def amplitude_function(params, frequencies, d_noise=0.):
     return params[0] * np.exp(params[1] * (frequencies - F0) + params[2] * (frequencies - F0) ** 2) + d_noise
 
 
-class Template():
+class Template:
     def __init__(self, number, source, param_dir):
         self.raw_dir = os.path.join(source, f'SIM{number}_coreas')
         self.long = os.path.join(source, f'DAT{number}.long')
@@ -42,7 +42,7 @@ class Template():
         # f_range = np.logical_and(freq > F_MIN, freq < F_MAX)
         n_freq = len(freq)
 
-        return (n_slices, n_antennas, n_pol, n_freq, n_time)
+        return n_slices, n_antennas, n_pol, n_freq, n_time
 
     def load_shower_parameters(self):
         """
@@ -160,27 +160,46 @@ class Template():
                 target_amp = np.apply_along_axis(lambda p: amplitude_function(p, freq), 1, amp_params)
 
                 synth_spectrum = self.norm_amplitude[slice_nr, antenna_nr] * target_amp * target_long[slice_nr] * \
-                                 np.exp(1j * self.norm_phase[slice_nr, antenna_nr])
+                    np.exp(1j * self.norm_phase[slice_nr, antenna_nr])
                 synth_spectrum[:, np.logical_not(f_range)] = 0.
                 synth[antenna_nr, :, :] += np.apply_along_axis(np.fft.irfft, 1, synth_spectrum)
 
         return synth
 
 
-class Benchmark():
-    def __init__(self, showers_dir, param_dir):
+class Benchmark:
+    def __init__(self, showers_dir, param_dir, mode="peak_ratio"):
         self.showers = list(showers_dir)
-        self.parameters = list(param_dir)
+        self.parameters = param_dir
 
-        self.mode = "peak"
+        self.mode = mode
+        self.scores = {}
 
     def select_showers(self):
-        pass
+        showers = []
 
-    def synthesize_targets(self):
+        for path in self.showers:
+            showers.extend([Template(name.split('_')[0][3:], path, self.parameters)
+                            for name in glob.glob("SIM*_coreas", root_dir=path)])
+
+        return showers
+
+    def score_synth(self, synth, real):
+        if self.mode == 'peak_ratio':
+            return np.amax(synth) / np.amax(real)
+        elif self.mode == 'peak_diff':
+            return np.amax(synth) - np.amax(real)
+
+    def run(self):
         templates = self.select_showers()
         targets = self.select_showers()
 
         for template in templates:
             for target in targets:
                 synth = template.map_to_target(target)
+                real = target.load_shower_pulse()
+
+                _, _, synth_max = template.load_shower_parameters()
+                _, _, real_max = target.load_shower_parameters()
+
+                self.scores[(synth_max, real_max)] = self.score_synth(synth, real)
