@@ -55,6 +55,15 @@ def amplitude_fit_slice_unbound(fdata, ydata, x, r, f0=0):
     return popt, d ** 2, linear
 
 
+def amplitude_fit_slice_linear(fdata, ydata, x, r, f0=0):
+    d = max(0, 1e-9 * (x / 400 - 1.5) * np.exp(1 - r / 40000))
+    popt, pcov = curve_fit(lambda f, a_0, b: a_0 * np.exp(b * (f - f0)), fdata / 1e6, ydata - d ** 2,
+                           p0=[ydata[0], -1e-3], maxfev=10000,
+                           sigma=np.maximum(ydata * 0.1, np.maximum(d ** 2, 1e-18)))
+    linear = False
+    return [*popt, 0], d ** 2, linear
+
+
 def fit_parameters(fitfun, x_data: list, y_data: list, return_cov=False):
     """
     Fits multiple parameters to the same fit function. Pass all the data for each parameter as an entry in y_data.
@@ -178,7 +187,7 @@ class TemplatesAnalyzer(object):
         TemplatesAnalyzer instance.
         :param filename: Name of the file to analyze.
         :return: Lists containing the X [g/cm^2] of the slice and the number of the antenna, together with the
-        amplitude best fit parameters, for the x and y polarization polarization.
+        amplitude best fit parameters, for the x and y polarization.
         """
         # Find the antenna number and atm. depth of slice
         temp = filename.split('_')[1].split('.')[0]
