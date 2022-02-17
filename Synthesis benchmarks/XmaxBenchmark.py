@@ -197,6 +197,11 @@ class Benchmark:
         self.scores = {}
 
     def select_showers(self, k=20):
+        """
+        Sample k showers from every path in shower list.
+        :param int k: Number of showers to sample from each directory.
+        :return: List of Template objects.
+        """
         from random import sample
         showers = []
 
@@ -209,31 +214,53 @@ class Benchmark:
 
     def score_synth(self, synth, real):
         if self.mode == 'peak_ratio':
-            return np.amax(synth, axis=2) / np.amax(real, axis=2)
+            return np.amax(np.abs(synth), axis=2) / np.amax(np.abs(real), axis=2)
         elif self.mode == 'peak_diff':
-            return np.amax(synth) - np.amax(real)
+            return np.amax(np.abs(synth), axis=2) - np.amax(np.abs(real), axis=2)
         elif self.mode == 'energy_ratio':
-            return fluence(synth) / fluence(real)
+            return np.apply_along_axis(fluence, 2, synth) / np.apply_along_axis(fluence, 2, real)
         elif self.mode == 'energy_diff':
-            return fluence(synth) - fluence(real)
+            return np.apply_along_axis(fluence, 2, synth) - np.apply_along_axis(fluence, 2, real)
         elif self.mode == 'correlation_max':
             from scipy.signal import correlate, correlation_lags
 
-            lags = correlation_lags(len(synth), len(real))
+            lags = correlation_lags(synth.shape[2], real.shape[2])
             window = np.logical_and(lags > -100, lags < 100)
-            return np.amax(correlate(synth, real)[window])
+
+            correlations = np.zeros(synth.shape[:2])
+            for i in range(synth.shape[0]):
+                for j in range(synth.shape[1]):
+                    corr = correlate(synth[i, j], real[i, j])
+                    norm = correlate(synth[i, j], synth[i, j])
+                    corr /= np.max(norm)
+                    correlations[i, j] = np.amax(corr[window])
+            return correlations
         elif self.mode == 'correlation_shift':
             from scipy.signal import correlate, correlation_lags
 
-            lags = correlation_lags(len(synth), len(real))
+            lags = correlation_lags(synth.shape[2], real.shape[2])
             window = np.logical_and(lags > -100, lags < 100)
-            return np.argmax(correlate(synth, real)[window])
+
+            correlations = np.zeros(synth.shape[:2])
+            for i in range(synth.shape[0]):
+                for j in range(synth.shape[1]):
+                    corr = correlate(synth[i, j], real[i, j])
+                    correlations[i, j] = lags[np.argmax(corr[window])] * TIME_DELTA * 1e9  # Give time shifts in ns
+            return correlations
         elif self.mode == 'correlation_center':
             from scipy.signal import correlate, correlation_lags
 
-            lags = correlation_lags(len(synth), len(real))
+            lags = correlation_lags(synth.shape[2], real.shape[2])
             window = np.where(lags == 0)
-            return correlate(synth, real)[window]
+
+            correlations = np.zeros(synth.shape[:2])
+            for i in range(synth.shape[0]):
+                for j in range(synth.shape[1]):
+                    corr = correlate(synth[i, j], real[i, j])
+                    norm = correlate(synth[i, j], synth[i, j])
+                    corr /= np.max(norm)
+                    correlations[i, j] = corr[window]
+            return correlations
 
     def run(self, number=4):
         templates = self.select_showers(k=number)
@@ -266,7 +293,7 @@ class Benchmark:
             cmap = cm.plasma
             norm = colors.Normalize(vmin=np.amin(antenna_scores), vmax=np.amax(antenna_scores))
 
-            fig, ax = plt.subplots(1, n_pol, num=ant, figsize=(12, 6))
+            fig, ax = plt.subplots(1, n_pol, num=ant, figsize=(12, 5))
             for pol in range(n_pol):
                 ax[pol].scatter(temp_max, real_max, c=antenna_scores[:, pol], cmap=cmap, norm=norm)
                 ax[pol].plot([min(temp_max + real_max), max(temp_max + real_max)],
