@@ -43,13 +43,16 @@ class ReaderWriter(object):
 
     def close_all_files(self):
         """
-        Close all the files opened by the instance.
+        Close all the files opened by the instance and reset file lists.
         """
         for file in self.filesX:
             file.close()
 
         for file in self.filesY:
             file.close()
+
+        self.filesX = []
+        self.filesY = []
 
 
 class ShowerDataC7(object):
