@@ -60,16 +60,17 @@ def amplitude_fit_slice_unbound(fdata, ydata, x, r, f0=0):
 distances = [1, 4000, 7500, 11000, 15000, 37500]
 files_path = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
 david_path = '/mnt/hgfs/Shared data/ampfitQ/'
-sim = '100045'
+sim = '100099'
 antenna = 3
-Xslice = 915
+Xslice = 600
 
 with open(files_path+'SIM'+sim+f'_coreas/raw_{antenna}x{Xslice}.dat', 'r') as file:
     data = np.genfromtxt(file) * c_vacuum * 1e2  # conversion from statV/cm to microV/m
 
 # data = data[:-1800, :]
 freq = np.fft.rfftfreq(len(data), 2e-10)
-frange = np.logical_and(20 * 1e6 <= freq, freq <= 502 * 1e6)
+frange = np.logical_and(30 * 1e6 <= freq, freq <= 80 * 1e6)
+F0 = 50
 
 Nslice = get_number_of_particles(files_path+'DAT' + sim + '.long', Xslice)
 spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:], norm='forward')
