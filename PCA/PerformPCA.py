@@ -7,7 +7,8 @@ from GlobalVars import DATABASE_DIRECTORY, FIT_DIRECTORY, REAS_DIRECTORY
 
 def read_long(file):
     long = np.genfromtxt(file, skip_header=2, skip_footer=216, usecols=(0, 2, 3))
-    return long[:, 0], np.sum(long[:, 1:], axis=1)
+    energy = np.genfromtxt(file, skip_header=216, skip_footer=6, usecols=(0, 1, 2, 3))
+    return long[:, 0], np.sum(long[:, 1:], axis=1), np.sum(energy[:, 1:], axis=1)
 
 
 database = read_file_json(os.path.join(DATABASE_DIRECTORY, 'sim_parameters.json'))
@@ -22,7 +23,7 @@ for lib in FIT_DIRS:
     for pol in ['fitX', 'fitY']:
         for file in os.listdir(os.path.join(lib, pol)):
             sim_nr = file.split('.')[0][3:]
-            x_slices, n_slices = read_long(os.path.join(REAS_DIRECTORY, f'DAT{sim_nr}.long'))
+            x_slices, n_slices, e_slices = read_long(os.path.join(REAS_DIRECTORY, f'DAT{sim_nr}.long'))
 
             frame = pd.read_csv(os.path.join(lib, pol, file), sep=', ',
                                 names=['Xslice', 'Antenna', 'A', 'b', 'c', 'Xmax', 'E'],
@@ -31,6 +32,7 @@ for lib in FIT_DIRS:
             frame.sort_values(['Antenna', 'Xslice'], inplace=True)
 
             frame = frame.assign(Nslice=list(n_slices)*6)
+            frame = frame.assign(EM=list(e_slices) * 6)
             frame = frame.assign(Polarization=0) if pol == 'fitX' else frame.assign(Polarization=1)
 
             series = database.loc[sim_nr]
