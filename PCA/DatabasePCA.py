@@ -14,15 +14,15 @@ def read_long(file, source=REAS_DIRECTORY):
     if source is not None:
         file = os.path.join(REAS_DIRECTORY, f'DAT{file}.long')
     long = np.genfromtxt(file, skip_header=2, skip_footer=216, usecols=(0, 2, 3))
-    energy = np.genfromtxt(file, skip_header=216, skip_footer=6, usecols=(0, 1, 2, 3))
+    energy = np.genfromtxt(file, skip_header=212, skip_footer=6, usecols=(0, 1, 2, 3))
     return long[:, 0], np.sum(long[:, 1:], axis=1), np.sum(energy[:, 1:], axis=1)
 
 
-features = ['Xmax', 'Nmax', 'L', 'R', 'depth', 'mass', 'fraction']
+features = ['Xmax', 'Nmax', 'L', 'R', 'X1', 'mass', 'fraction']
 pca = PCA(n_components=2)
 
 database = read_file_json(os.path.join(DATABASE_DIRECTORY, 'sim_parameters.json'))
-database = pd.DataFrame(database, columns=['sim', 'Xmax', 'Nmax', 'L', 'R', 'depth', 'mass'])
+database = pd.DataFrame(database, columns=['sim', 'Xmax', 'Nmax', 'L', 'R', 'X1', 'mass'])
 database = database.set_index('sim')
 
 database['type'] = database.apply(lambda row: row.name[0], axis=1)
