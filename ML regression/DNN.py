@@ -3,8 +3,9 @@ import numpy as np
 import pandas as pd
 from NumpyEncoder import read_file_json
 from GlobalVars import DISTANCES, DATABASE_DIRECTORY, FIT_DIRECTORY, REAS_DIRECTORY
+from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPRegressor
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_validate
 
 
 def read_long(file):
@@ -53,9 +54,7 @@ df = pd.concat(df_list)
 df['antenna'] = df.apply(lambda x: DISTANCES[int(x['Antenna'])], axis=1)
 df['DeltaX'] = df['Xslice'] - df['Xmax']
 
-# Make regressor
-mlp = MLPRegressor((15, 15, 10), random_state=42)
-
+# Separate out features/targets, make train/test set
 X = df.loc[:, features].values
 y = df.loc[:, targets].values
 
@@ -63,5 +62,16 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, train_size=0.80, test_size=0.20, random_state=4
 )
 
-mlp.fit(X_train, y_train)
-print(mlp.score(X_test, y_test))
+# Scale the features
+scaler = StandardScaler()
+scaler.fit(X_train)
+
+# Make regressor
+mlp = MLPRegressor((5, 10), random_state=42)
+
+scores = cross_validate(mlp, scaler.transform(X_train), y_train,
+                        scoring=['neg_mean_squared_error', 'max_error'],
+                        cv=5, verbose=5, return_estimator=True)
+
+# mlp.fit(scaler.transform(X_train), y_train)
+# print(mlp.score(scaler.transform(X_test), y_test))
