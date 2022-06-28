@@ -7,17 +7,20 @@ BASEFILE = "/home/mitjadesmet/Documents/CORSIKA input files/SIMxxxxxx.list"
 
 def write_antenna(filename, antenna_coord):
     """
-
-    :param str filename:
-    :param tuple antenna_coord:
-    :return:
+    Write a single antenna to the file with filename. The template from BASEFILE is used for the slicing. The antenna
+    coordinates are used for the placement as well as the name of the antenna. The naming convention for the antennas is
+    P{x-val}_N{y-val}x{slice}, where P and N are 0/1 depending on whether the x and y coordinate are negative/positive
+    respectively. The x-val and y-val are the absolute values of the x and y coordinates.
+    :param str filename: The name of the file to which to append the antenna
+    :param tuple antenna_coord: The coordinates of antenna
+    :return: None
     """
     with open(BASEFILE, 'r') as f:
         base_contents = f.readlines()
 
     antenna_name = f'{int(antenna_coord[0] >= 0)}{int(abs(antenna_coord[0]))}_' \
                    f'{int(antenna_coord[1] >= 0)}{int(abs(antenna_coord[1]))}'
-    antenna_contents = [line.replace('7500.0 0.0', f'{antenna_coord[0]} {antenna_coord[1]}') \
+    antenna_contents = [line.replace('7500.0 0.0', f'{antenna_coord[0]} {antenna_coord[1]}')
                             .replace('75x', f'{antenna_name}x')
                         for line in base_contents]
 
@@ -29,6 +32,14 @@ def write_antenna(filename, antenna_coord):
 
 
 def make_list(filename, antenna_x, antenna_y):
+    """
+    Write all the antennas to the file with filename. The antenna_x and antenna_y must contain the x and y coordinates
+    of the antennas. The z coordinate is assumed to be always 0.
+    :param filename: File write the antennas to. Must not exist already.
+    :param antenna_x: The x coordinates of the antennas
+    :param antenna_y: The y coordinates of the antennas
+    :return: None
+    """
     if os.path.isfile(f"{filename}.list"):
         print("File with this name already exists. Rename the file or choose another filename.")
     else:
