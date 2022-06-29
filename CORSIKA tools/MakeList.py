@@ -18,8 +18,8 @@ def write_antenna(filename, antenna_coord):
     with open(BASEFILE, 'r') as f:
         base_contents = f.readlines()
 
-    antenna_name = f'{int(antenna_coord[0] >= 0)}{int(abs(antenna_coord[0]))}_' \
-                   f'{int(antenna_coord[1] >= 0)}{int(abs(antenna_coord[1]))}'
+    antenna_name = f'{int(antenna_coord[0] >= 0)}{int(abs(antenna_coord[0]) / 100)}_' \
+                   f'{int(antenna_coord[1] >= 0)}{int(abs(antenna_coord[1]) / 100)}'
     antenna_contents = [line.replace('7500.0 0.0', f'{antenna_coord[0]} {antenna_coord[1]}')
                             .replace('75x', f'{antenna_name}x')
                         for line in base_contents]

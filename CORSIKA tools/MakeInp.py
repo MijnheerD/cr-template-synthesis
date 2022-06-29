@@ -7,24 +7,27 @@ DIR = "/home/mitjadesmet/Documents/CORSIKA input files/"
 RUNS = ["RUN1", "RUN2", "RUN3", "RUN4"]
 
 
-def sample_primary_energy():
+def sample_primary_energy(exp_notation=False):
     """
     Sample a single primary energy from log-uniform distribution and format it for use in CORSIKE INP file.
     :return: Formatted energy string
     """
     primary_energy_exp = loguniform(17, 19, size=1, return_exp=True)  # random exponent in eV
     primary_energy_exp -= 9  # set in GeV
-    if primary_energy_exp > 9:
-        # Subtract the highest power possible
-        primary_energy_rest = primary_energy_exp - 9
-        # Calculate the prefactor
-        primary_energy_pre = 10 ** primary_energy_rest
-        # Format the string with the exponent
-        primary_energy = f'{primary_energy_pre[0]:.3f}E+09'
+    if exp_notation:
+        if primary_energy_exp > 9:
+            # Subtract the highest power possible
+            primary_energy_rest = primary_energy_exp - 9
+            # Calculate the prefactor
+            primary_energy_pre = 10 ** primary_energy_rest
+            # Format the string with the exponent
+            primary_energy = f'{primary_energy_pre[0]:.3f}E+09'
+        else:
+            primary_energy_rest = primary_energy_exp - 8
+            primary_energy_pre = 10 ** primary_energy_rest
+            primary_energy = f'{primary_energy_pre[0]:.3f}E+08'
     else:
-        primary_energy_rest = primary_energy_exp - 8
-        primary_energy_pre = 10 ** primary_energy_rest
-        primary_energy = f'{primary_energy_pre[0]:.3f}E+08'
+        primary_energy = f'{10 ** primary_energy_exp[0]:.2f}'
     return primary_energy
 
 
@@ -52,16 +55,19 @@ def sub_sim(sim_nr, sim_energy, sim_seed, sub, primary='proton'):
     contents[5] = base_contents[5].replace('3', str(sim_seed[2]))
     # Change ERANGE
     contents[7] = base_contents[7].replace('1.000E+08 1.000E+08', f'{sim_energy} {sim_energy}')
+    # Coupling ERANGE with THIN
+    contents[13] = base_contents[13].replace('1.000E+01', f'{float(sim_energy) * 1e-7}')
 
     return contents
 
 
-def proton_sim(sim_number):
+def proton_sim(sim_number, return_energy=True):
     """
     Create the input files for a proton simulation with sim_number in the subdirectories listed in RUNS. The primary
     energy and 3 seeds are randomly generated using sample_primary_energy() and numpy.random.randint() respectively.
-    :param sim_number: The unique number of the simulation run.
-    :return: None
+    :param bool return_energy: Whether to return the primary energy
+    :param sim_number: The unique number of the simulation run
+    :return str: Primary energy, if return_energy is True (the default)
     """
     sim_primary_energy = sample_primary_energy()
     sim_seeds = np.random.randint(1, 900000001, size=3)
@@ -72,13 +78,17 @@ def proton_sim(sim_number):
         with open(os.path.join(sub_dir, f'SIM{sim_number}.inp'), 'w') as file:
             file.writelines(file_contents)
 
+    if return_energy:
+        return sim_primary_energy
 
-def iron_sim(sim_number):
+
+def iron_sim(sim_number, return_energy=True):
     """
-    Create the input files for a iron simulation with sim_number in the subdirectories listed in RUNS. The primary
+    Create the input files for an iron simulation with sim_number in the subdirectories listed in RUNS. The primary
     energy and 3 seeds are randomly generated using sample_primary_energy() and numpy.random.randint() respectively.
-    :param sim_number: The unique number of the simulation run.
-    :return: None
+    :param bool return_energy: Whether to return the primary energy
+    :param sim_number: The unique number of the simulation run
+    :return str: Primary energy, if return_energy is True (the default)
     """
     sim_primary_energy = sample_primary_energy()
     sim_seeds = np.random.randint(1, 900000001, size=3)
@@ -88,6 +98,9 @@ def iron_sim(sim_number):
 
         with open(os.path.join(sub_dir, f'SIM{sim_number}.inp'), 'w') as file:
             file.writelines(file_contents)
+
+    if return_energy:
+        return sim_primary_energy
 
 
 def make_inp(nr_of_sims, directory=DIR, sim_start=0):

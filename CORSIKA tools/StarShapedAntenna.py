@@ -7,7 +7,7 @@ PLOT = False  # whether to plot antenna shape
 R = np.linspace(20.0, 200.0, 13)  # instead of 16
 # R = np.concatenate((np.array([12.5 / 8, 12.5 / 4, 12.5 / 2]), R))
 R_ext = np.array([225.0, 250.0, 275.0, 300.0, 350.0, 400.0, 500.0])
-R = np.concatenate((R, R_ext))
+R = np.concatenate((R, R_ext)) * 100  # in cm!
 
 
 def star_shape(radius, n=8):
