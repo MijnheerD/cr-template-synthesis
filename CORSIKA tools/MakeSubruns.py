@@ -12,6 +12,11 @@ def make_runs(nr_of_sims, directory=DIR, sim_start=0):
     # Change dir to find templates
     os.chdir(directory)
 
+    # Make sure all subdirectories exist
+    for run in RUNS:
+        os.makedirs(run, exist_ok=True)
+
+    # Loop over all the simulations
     proton_energies = []
     iron_energies = []
     for ind in range(sim_start, sim_start + nr_of_sims):

@@ -1,8 +1,10 @@
 import os
 import sys
-from StarShapedAntenna import R, antenna_layout, extract_arm
+from StarShapedAntenna import projected_antenna_layout, extract_arm
 
-BASEFILE = "/home/mitjadesmet/Documents/CORSIKA input files/SIMxxxxxx.list"
+DIR = "/home/mitjadesmet/Documents/CORSIKA input files/"
+BASEFILE = os.path.join(DIR, "SIMxxxxxx.list")
+MAX_ANTENNA = 5
 
 
 def write_antenna(filename, antenna_coord):
@@ -49,20 +51,40 @@ def make_list(filename, antenna_x, antenna_y):
         write_antenna(f"{filename}.list", antenna_coord)
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 2:
-        arm = int(sys.argv[2])
-    else:
-        arm = 0
+def make_list_files(zenith, azimuth, arms):
+    x_p, y_p, _ = projected_antenna_layout(azimuth, zenith, number_of_arms=arms)
 
-    x_r, y_r = antenna_layout(R)
-    x_arm, y_arm = extract_arm(x_r, y_r, arm=arm)
-
-    x_antenna = x_arm.flatten()
-    y_antenna = y_arm.flatten()
+    # Create a single array for antenna positions
+    x_antenna = x_p.flatten()
+    y_antenna = y_p.flatten()
 
     # Round out numerical errors
-    x_antenna[abs(x_antenna) < 1e-13] = 0.0
-    y_antenna[abs(y_antenna) < 1e-13] = 0.0
+    x_antenna[abs(x_antenna) < 1e-10] = 0.0
+    y_antenna[abs(y_antenna) < 1e-10] = 0.0
 
-    make_list(sys.argv[1], x_antenna, y_antenna)
+    # Split the arms into chunks of MAX_ANTENNA
+    x_chunks = [x_antenna[i * MAX_ANTENNA:(i + 1) * MAX_ANTENNA]
+                for i in range((len(x_antenna) + MAX_ANTENNA - 1) // MAX_ANTENNA)]
+    y_chunks = [y_antenna[i * MAX_ANTENNA:(i + 1) * MAX_ANTENNA]
+                for i in range((len(y_antenna) + MAX_ANTENNA - 1) // MAX_ANTENNA)]
+
+    for ind, (x, y) in enumerate(zip(x_chunks, y_chunks)):
+        make_list(f'RUN{ind+1}', x, y)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 3:
+        arm = int(sys.argv[3])
+        zen = float(sys.argv[2])
+    elif len(sys.argv) > 2:
+        arm = 8
+        zen = int(sys.argv[2])
+    else:
+        arm = 8
+        zen = 45.0
+
+    azi = 0.0
+
+    # Change dir where to save LIST files
+    os.chdir(DIR)
+    make_list_files(zen, azi, arm)

@@ -1,10 +1,12 @@
 import os
 import sys
+import glob
 import numpy as np
 from LogEdistribution import loguniform
+from MakeList import DIR
 
-DIR = "/home/mitjadesmet/Documents/CORSIKA input files/"
-RUNS = ["RUN1", "RUN2", "RUN3", "RUN4"]
+
+RUNS = [file.split(".")[0] for file in glob.glob("RUN*.list", root_dir=DIR)]
 
 
 def sample_primary_energy(exp_notation=False):
@@ -42,8 +44,8 @@ def sub_sim(sim_nr, sim_energy, sim_seed, sub, primary='proton'):
     :param primary: Name of the primary, used to identify correct template file
     :return: The contents to be written to the INP file
     """
-    basefile = f'{sub}_{primary}.inp'
-    with open(basefile, 'r') as f:
+    template = f'SIMxxxxxx_{primary}.inp'
+    with open(template, 'r') as f:
         base_contents = f.readlines()
     contents = base_contents
 
@@ -57,6 +59,8 @@ def sub_sim(sim_nr, sim_energy, sim_seed, sub, primary='proton'):
     contents[7] = base_contents[7].replace('1.000E+08 1.000E+08', f'{sim_energy} {sim_energy}')
     # Coupling ERANGE with THIN
     contents[13] = base_contents[13].replace('1.000E+01', f'{float(sim_energy) * 1e-7}')
+    # Set correct output directory with DIRECT
+    contents[27] = base_contents[27].replace('RUNxx', sub)
 
     return contents
 

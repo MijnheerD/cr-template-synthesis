@@ -10,6 +10,64 @@ R_ext = np.array([225.0, 250.0, 275.0, 300.0, 350.0, 400.0, 500.0])
 R = np.concatenate((R, R_ext)) * 100  # in cm!
 
 
+def projected_antenna_layout(az, zen, number_of_arms=8, site=None):
+    """
+
+    **Properties**
+
+    ============== ===================================================================
+    Parameter      Description
+    ============== ===================================================================
+    *az*           arrival direction azimuth (Measured from East towards North in degrees)
+    *zen*          arrival direction zenith (Zenith angle in degrees)
+    ============== ===================================================================
+
+    """
+    # Convert degrees to radians
+    az = np.deg2rad(az)
+    zen = np.deg2rad(zen)
+
+    # Define site specific parameters
+    if site == "SKA":
+        inc = np.arctan(-48.27 / 27.6)  # ~ -1.05138
+        altitude_cm = 46000.0
+    elif site == "LOFAR":  # LOFAR site
+        inc = 67.8 / 180. * np.pi
+        altitude_cm = 760.0
+    else:  # Template slicing technique
+        inc = np.deg2rad(67.8)
+        altitude_cm = 0.0
+
+    B = np.array([0, np.cos(inc), -np.sin(inc)])  # LOFAR coordinate convention
+    v = np.array([-np.cos(az) * np.sin(zen), -np.sin(az) * np.sin(zen), -np.cos(zen)])
+
+    vxB = np.cross(v, B)
+    vxB = vxB / np.linalg.norm(vxB)
+
+    vxvxB = np.cross(v, vxB)
+
+    # Do N=160 pattern, with intermediate positions
+    radius = np.linspace(20.0, 200.0, 13)  # instead of 16
+    radius_ext = np.array([225.0, 250.0, 275.0, 300.0, 350.0, 400.0, 500.0])
+    radius = np.concatenate((radius, radius_ext))
+
+    radians_step = 2 * np.pi / number_of_arms
+
+    x = np.zeros((len(radius), number_of_arms))
+    y = np.zeros((len(radius), number_of_arms))
+    z = np.zeros((len(radius), number_of_arms))
+    for ind, r in enumerate(radius):
+        for j in np.arange(number_of_arms):
+            xyz = r * (np.cos(j * radians_step) * vxB + np.sin(j * radians_step) * vxvxB)
+            c = xyz[2] / v[2]
+
+            x[ind, j] = 100 * (xyz[1] - c * v[1])
+            y[ind, j] = -100 * (xyz[0] - c * v[0])
+            z[ind, j] = altitude_cm
+
+    return x, y, z
+
+
 def star_shape(radius, n=8):
     """
     Space out n points on a circle with given radius.
@@ -79,7 +137,7 @@ def extract_arm(layout_x, layout_y, arm=0):
 
 
 if PLOT:
-    x_r, y_r = antenna_layout(R)
+    x_r, y_r, _ = projected_antenna_layout(0, 45)
     x_arm, y_arm = extract_arm(x_r, y_r, arm=0)
 
     print(R)
@@ -92,7 +150,7 @@ if PLOT:
     ax.set_xlim([-max(R), max(R)])
     ax.set_ylim([-max(R), max(R)])
 
-    plt.grid(True)
     ax.set_aspect('equal')
+    plt.grid(True)
 
     plt.show()
