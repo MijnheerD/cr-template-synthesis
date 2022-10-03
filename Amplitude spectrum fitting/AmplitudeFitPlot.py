@@ -35,14 +35,14 @@ def plot_fit_profile(ax, x_plot, param, bins, mean, std, bar=False):
         ax.bar(bins[:-1], mean, align='edge', width=width, color='w', alpha=0.3, yerr=std, ecolor='w')
 
 
-FIT_DIRECTORIES = ['fitFilesUB17', 'fitFilesUB18', 'fitFilesUB19']
+FIT_DIRECTORIES = ['fitFiles5017', 'fitFiles5018', 'fitFiles5019']
 FIT_TYPES = {'profile'}
-PLOT_TYPES = {'fit', 'target'}
+PLOT_TYPES = {'fit'}
 COLORS = ['cyan', 'magenta', 'yellow']
 COLORS_DAVID = ['green', 'red', 'orange']
 REAS_DIRECTORY = '/mnt/hgfs/Shared data/BulkSynth/CORSIKA_long_files'
 DAVID_DIRECTORY = '/mnt/hgfs/Shared data/ampfitQ/'
-PARAM_DIRECTORY = '../Parameters/paramProfileFitUB'
+PARAM_DIRECTORY = os.path.join('..', 'Parameters', 'paramProfileFit50')
 DISTANCES = [1, 4000, 7500, 11000, 15000, 37500]  # antenna_nr radial distances to shower core, in cm
 
 # if __name__ == "__main__":

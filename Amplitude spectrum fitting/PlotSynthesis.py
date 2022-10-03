@@ -43,7 +43,7 @@ def filter_pulse(pulse, f_min=MIN_FREQ, f_max=MAX_FREQ):
     return np.fft.irfft(filtered)
 
 
-fig, ax = plt.subplots(2, 2, figsize=(10, 15))
+fig, ax = plt.subplots(2, 2, figsize=(10, 16))
 ax = ax.flatten()
 
 ax[0].plot(temp_slices, temp_particles, c='purple', label='Template')
