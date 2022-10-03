@@ -130,3 +130,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Local data files
+Amplitude spectrum fitting/CORSIKA_long_files/
+Amplitude spectrum fitting/fitFiles*/
