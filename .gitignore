@@ -130,3 +130,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Project folders
+/Parallel processing tests
+/Amplitude spectrum fitting/fit*
+/Amplitude spectrum fitting/paramE/
+/Amplitude spectrum fitting/CORSIKA_long_files/
+/Figures
