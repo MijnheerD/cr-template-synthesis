@@ -141,3 +141,7 @@ dmypy.json
 # Local data files
 Amplitude spectrum fitting/CORSIKA_long_files/
 Amplitude spectrum fitting/fitFiles*/
+
+# Test files
+/.ipynb_checkpoints
+Test*.*
