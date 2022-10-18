@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-PLOT = False  # whether to plot antenna shape
+PLOT = True  # whether to plot antenna shape
 
 R = np.linspace(20.0, 200.0, 13)  # instead of 16
 # R = np.concatenate((np.array([12.5 / 8, 12.5 / 4, 12.5 / 2]), R))
@@ -10,7 +10,7 @@ R_ext = np.array([225.0, 250.0, 275.0, 300.0, 350.0, 400.0, 500.0])
 R = np.concatenate((R, R_ext)) * 100  # in cm!
 
 
-def projected_antenna_layout(az, zen, number_of_arms=8, site=None):
+def projected_antenna_layout(az, zen, number_of_arms=8, site=None, coreas=False):
     """
 
     **Properties**
@@ -23,9 +23,11 @@ def projected_antenna_layout(az, zen, number_of_arms=8, site=None):
     ============== ===================================================================
 
     """
-    # Convert degrees to radians
+    # Convert degrees to radians and change coord system if necessary
     az = np.deg2rad(az)
     zen = np.deg2rad(zen)
+    if coreas:
+        az += np.pi / 2
 
     # Define site specific parameters
     if site == "SKA":
@@ -64,6 +66,9 @@ def projected_antenna_layout(az, zen, number_of_arms=8, site=None):
             x[ind, j] = 100 * (xyz[1] - c * v[1])
             y[ind, j] = -100 * (xyz[0] - c * v[0])
             z[ind, j] = altitude_cm
+
+    if coreas:
+        return y, -x, z
 
     return x, y, z
 
@@ -137,7 +142,7 @@ def extract_arm(layout_x, layout_y, arm=0):
 
 
 if PLOT:
-    x_r, y_r, _ = projected_antenna_layout(0, 45)
+    x_r, y_r, _ = projected_antenna_layout(0, 45, coreas=True)
     x_arm, y_arm = extract_arm(x_r, y_r, arm=0)
 
     print(R)
