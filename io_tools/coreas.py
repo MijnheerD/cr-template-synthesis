@@ -74,7 +74,7 @@ class CoreasFileWrapper(FileWrapper):
 
     # CoREAS specific functions
     # Content getters, based on CoREAS file content
-    def get_time(self):
+    def get_times(self):
         return self.contents[:, 0]
 
     def get_traces(self):
@@ -111,7 +111,7 @@ class CoreasFileWrapper(FileWrapper):
         if system == 'vvB':
             self.coord_system = 'vvB'
 
-            # Get basis vectors (matrices with dimensions 3x1)
+            # Get basis vectors (matrices with dimensions 3x1) and make transformation matrix
             vB, vvB, v = vvB_coord_system(zenith, azimuth, B_vector)
 
             trans_matrix = array([vB, vvB, v]).T
@@ -130,7 +130,5 @@ class CoreasFileWrapper(FileWrapper):
             raise ValueError("Coordinate system not recognized")
 
         # Apply transformation
-        E = self.get_traces()  # matrix with dimensions nx3
-
-        # Transform traces to new coordinate system
+        E = self.get_traces()
         self.contents[:, 1:] = dot(E, trans_matrix)

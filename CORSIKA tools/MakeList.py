@@ -1,6 +1,6 @@
 import os
 import sys
-from StarShapedAntenna import projected_antenna_layout, extract_arm
+from StarShapedAntenna import projected_antenna_layout
 
 DIR = "/home/mitjadesmet/Documents/CORSIKA input files/"
 BASEFILE = os.path.join(DIR, "SIMxxxxxx.list")
@@ -52,7 +52,7 @@ def make_list(filename, antenna_x, antenna_y):
 
 
 def make_list_files(zenith, azimuth, arms):
-    x_p, y_p, _ = projected_antenna_layout(azimuth, zenith, number_of_arms=arms)
+    x_p, y_p, _ = projected_antenna_layout(azimuth, zenith, number_of_arms=arms, coreas=True)
 
     # Create a single array for antenna positions
     x_antenna = x_p.flatten()
