@@ -1,8 +1,12 @@
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 from scipy.optimize import curve_fit
 from scipy.constants import c as c_vacuum
+
+
+F0 = 50  # MHz
 
 
 def get_number_of_particles(path, slice):
@@ -57,12 +61,32 @@ def amplitude_fit_slice_unbound(fdata, ydata, x, r, f0=0):
     return popt, d ** 2
 
 
-distances = [1, 4000, 7500, 11000, 15000, 37500]
-files_path = '/mnt/hgfs/Shared data/BulkSynth/bulksynth-17/'
-david_path = '/mnt/hgfs/Shared data/ampfitQ/'
-sim = '100045'
-antenna = 3
-Xslice = 915
+def antenna_distance(antenna_code):
+    """
+    Extract x and y coordinate of the antenna using the antenna code. This is only approximate as in the codes the
+    distances are rounded to meter scale.
+    TODO: extract coordinates from list file
+    :param antenna_code: String indicating the antenna, of the form 'SIGN_xSIGN_' with SIGN either 0 or 1
+    :return: The distance from the shower axis to the antenna
+    """
+    coordinates = antenna_code.split('_')
+    x = int(coordinates[0][1:])  # m
+    y = int(coordinates[1][1:])  # m
+    return np.sqrt(x ** 2 + y ** 2)
+
+
+if __name__ == "__main__":
+    files_path = '/mnt/pnfs/CrData/Showers45v2/RUN17/'
+    sim = '245002'
+    antenna = '0147_0120'
+    Xslice = int(sys.argv[1])
+    show = True
+else:
+    files_path = '/mnt/pnfs/CrData/Showers45v2/RUN1/'
+    sim = '245002'
+    antenna = '09_124'
+    Xslice = 770
+    show = True
 
 with open(files_path+'SIM'+sim+f'_coreas/raw_{antenna}x{Xslice}.dat', 'r') as file:
     data = np.genfromtxt(file) * c_vacuum * 1e2  # conversion from statV/cm to microV/m
@@ -76,8 +100,8 @@ spectrum = np.apply_along_axis(np.fft.rfft, 0, data[:, 1:], norm='forward')
 amplitude = np.abs(spectrum) * 2  # Need to multiply by 2 because 1-sided FT
 filtered = amplitude[frange]
 
-coefX, dX = amplitude_fit_slice_unbound(freq[frange],  filtered[:, 0], Xslice, distances[antenna], f0=F0)
-coefY, dY = amplitude_fit_slice_unbound(freq[frange],  filtered[:, 1], Xslice, distances[antenna], f0=F0)
+coefX, dX = amplitude_fit_slice_unbound(freq[frange],  filtered[:, 0], Xslice, antenna_distance(antenna), f0=F0)
+coefY, dY = amplitude_fit_slice_unbound(freq[frange],  filtered[:, 1], Xslice, antenna_distance(antenna), f0=F0)
 
 qoefX = np.polynomial.polynomial.polyfit(freq[frange] / 1e6 - F0,  np.log(filtered[:, 0] - dX), 2)
 qoefY = np.polynomial.polynomial.polyfit(freq[frange] / 1e6 - F0,  np.log(filtered[:, 1] - dY), 2)
@@ -91,7 +115,8 @@ qoefY[0] = np.exp(qoefY[0])
 print('The x component has parameters', *qoefX)
 print('The y component has parameters', *qoefY)
 
-fig = plt.figure()
+fig = plt.figure(figsize=(12, 6))
+fig.suptitle(f'Antenna distance to shower axis is {antenna_distance(antenna):.2f}m')
 
 ax = fig.add_subplot(121)
 ax.plot(freq[frange]/1e6,  filtered[:, 0], linestyle='--', color='orange')
@@ -102,8 +127,9 @@ ax.plot(freq[frange]/1e6, amplitude_fun_slice(freq[frange]/1e6, *qoefX, dX, f0=F
 ax.set_xlabel('Frequency (MHz)')
 ax.set_yscale('log')
 ax.set_title('The x-component')
-# ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
-# ax.ticklabel_format(scilimits=(-10, -10), axis='y')
+ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+# ax.yaxis.set_minor_formatter(ticker.ScalarFormatter(useMathText=False))
+ax.ticklabel_format(style='scientific', scilimits=(0, 0), axis='y')
 ax.legend()
 
 ax2 = fig.add_subplot(122)
@@ -113,10 +139,15 @@ ax2.plot(freq[frange]/1e6, amplitude_fun_slice(freq[frange]/1e6, *coefY, dY, f0=
 ax2.plot(freq[frange]/1e6, amplitude_fun_slice(freq[frange]/1e6, *qoefY, dY, f0=F0),
          color='lightblue', label='Numpy polyfit')
 ax2.set_xlabel('Frequency (MHz)')
-ax2.set_yscale('log')
-# ax2.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
-# ax2.ticklabel_format(scilimits=(-10, -10), axis='y')
+# ax2.set_yscale('log')
+ax2.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+# ax2.yaxis.set_minor_formatter(ticker.LogFormatterSciNotation(labelOnlyBase=False))
+ax2.ticklabel_format(style='scientific', scilimits=(0, 0), axis='y')
 ax2.set_title('The y-component')
 ax2.legend()
 
-plt.show()
+if show:
+    plt.show()
+else:
+    plt.savefig(f'/home/mitjadesmet/Documents/Template synthesis/Spectrum fits/SIM{sim}_{Xslice}_{antenna}.png',
+                bbox_inches='tight')
