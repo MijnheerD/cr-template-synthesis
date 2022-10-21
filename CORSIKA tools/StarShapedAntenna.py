@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-PLOT = True  # whether to plot antenna shape
+PLOT = False  # whether to plot antenna shape
 
 R = np.linspace(20.0, 200.0, 13)  # instead of 16
 # R = np.concatenate((np.array([12.5 / 8, 12.5 / 4, 12.5 / 2]), R))
@@ -68,9 +68,9 @@ def projected_antenna_layout(az, zen, number_of_arms=8, site=None, coreas=False)
             z[ind, j] = altitude_cm
 
     if coreas:
-        return y, -x, z
+        return x, y, z
 
-    return x, y, z
+    return -y, x, z
 
 
 def star_shape(radius, n=8):
@@ -142,8 +142,8 @@ def extract_arm(layout_x, layout_y, arm=0):
 
 
 if PLOT:
-    x_r, y_r, _ = projected_antenna_layout(0, 45, coreas=True)
-    x_arm, y_arm = extract_arm(x_r, y_r, arm=0)
+    x_r, y_r, _ = projected_antenna_layout(0, 45, coreas=True, number_of_arms=4)
+    x_arm, y_arm = extract_arm(x_r, y_r, arm=1)
 
     print(R)
     print(f'There are {len(x_arm)} antennas in the selected arm')
@@ -156,6 +156,7 @@ if PLOT:
     ax.set_ylim([-max(R), max(R)])
 
     ax.set_aspect('equal')
+    ax.legend()
     plt.grid(True)
 
     plt.show()
