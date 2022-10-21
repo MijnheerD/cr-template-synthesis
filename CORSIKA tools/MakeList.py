@@ -1,10 +1,10 @@
 import os
 import sys
-from StarShapedAntenna import projected_antenna_layout
+from StarShapedAntenna import projected_antenna_layout, extract_arm
 
 DIR = "/home/mitjadesmet/Documents/CORSIKA input files/"
 BASEFILE = os.path.join(DIR, "SIMxxxxxx.list")
-MAX_ANTENNA = 5
+MAX_ANTENNA = 8
 
 
 def write_antenna(filename, antenna_coord):
@@ -51,8 +51,12 @@ def make_list(filename, antenna_x, antenna_y):
         write_antenna(f"{filename}.list", antenna_coord)
 
 
-def make_list_files(zenith, azimuth, arms):
+def make_list_files(zenith, azimuth, arms, selected_arm=None):
     x_p, y_p, _ = projected_antenna_layout(azimuth, zenith, number_of_arms=arms, coreas=True)
+    if selected_arm is not None:
+        x_arm, y_arm = extract_arm(x_p, y_p, arm=selected_arm)
+        x_p = x_arm
+        y_p = y_arm
 
     # Create a single array for antenna positions
     x_antenna = x_p.flatten()
@@ -74,12 +78,19 @@ def make_list_files(zenith, azimuth, arms):
 
 if __name__ == "__main__":
     if len(sys.argv) > 3:
-        arm = int(sys.argv[3])
-        zen = float(sys.argv[2])
+        sel = int(sys.argv[3])
+        arm = int(sys.argv[2])
+        zen = float(sys.argv[1])
     elif len(sys.argv) > 2:
+        sel = None
+        arm = int(sys.argv[2])
+        zen = int(sys.argv[1])
+    elif len(sys.argv) > 1:
+        sel = None
         arm = 8
-        zen = int(sys.argv[2])
+        zen = int(sys.argv[1])
     else:
+        sel = None
         arm = 8
         zen = 45.0
 
@@ -87,4 +98,4 @@ if __name__ == "__main__":
 
     # Change dir where to save LIST files
     os.chdir(DIR)
-    make_list_files(zen, azi, arm)
+    make_list_files(zen, azi, arm, selected_arm=sel)
