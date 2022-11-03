@@ -137,3 +137,7 @@ dmypy.json
 /Amplitude spectrum fitting/paramE/
 /Amplitude spectrum fitting/CORSIKA_long_files/
 /Figures
+
+# Local data files
+Amplitude spectrum fitting/CORSIKA_long_files/
+Amplitude spectrum fitting/fitFiles*/
